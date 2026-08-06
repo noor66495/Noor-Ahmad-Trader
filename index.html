@@ -3,16 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Noor Ahmad Trader - Personal ICT/SMC Analyzer</title>
+    <title>Noor Ahmad Trader - Personal ICT/SMC Suite</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Local Highly Resilient Chart Library fallback to CDNs -->
-    <script src="./noor-engine.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
-    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
     
     <script>
         tailwind.config = {
@@ -165,8 +160,8 @@
         <div class="bg-yellow-600/10 border-b border-yellow-600/20 py-1.5 px-6 text-xs text-center flex items-center justify-center gap-4">
             <span class="flex items-center gap-1.5 text-yellow-500 font-bold">
                 <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
-                <span id="lbl-live-signal-ps">حقیقي ژوندی بازار وصل شو! نرخونه په مستقیم ډول له نړیوال سوداګریز مرکز څخه په هره ثانیه کې تازه کیږي.</span>
-                <span id="lbl-live-signal-en" class="hidden font-sans">REAL-TIME GLOBAL RATES INTEGRATED! Price feeds synchronized directly from international markets.</span>
+                <span id="lbl-live-signal-ps">ځانګړی ځایی چارټ انجن فعال شو! د بهرني ګیټ‌هب کتابتون پرته ۱۰۰٪ وړیا او باوري کار کوي.</span>
+                <span id="lbl-live-signal-en" class="hidden font-sans">NATIVE RESILIENT ENGINE ACTIVE! Works 100% locally without external library blocks.</span>
             </span>
         </div>
 
@@ -184,7 +179,7 @@
                                 <i class="fa-solid fa-chart-line text-yellow-500"></i>
                                 <span id="chart-asset-title">XAU/USD (Gold) &bull; 4H Analysis</span>
                             </h2>
-                            <p class="text-xs text-gray-400" id="chart-sub-ps font-sans"><span class="text-emerald-500 font-bold">ژوندی نرخ (Live Spot Gold)</span> او د اتوماتیک سمارټ د کچو نښه کول</p>
+                            <p class="text-xs text-gray-400" id="chart-sub-ps font-sans"><span class="text-emerald-500 font-bold">ژوندی ځایی نرخ (Live Spot Gold)</span> او د اتوماتیک سمارټ د کچو نښه کول</p>
                             <p class="text-xs text-gray-400 hidden font-sans" id="chart-sub-en"><span class="text-emerald-500 font-bold">Live Spot Price</span> with automatic Smart Money indicators</p>
                         </div>
                         
@@ -203,15 +198,9 @@
                         </div>
                     </div>
 
-                    <!-- Chart Div -->
+                    <!-- Chart Div (Native HTML5 Canvas Chart Engine) -->
                     <div class="relative w-full bg-[#05070A] rounded-xl border border-gray-800 p-1" style="height: 400px;">
-                        <div id="trading-chart" class="w-full h-full flex items-center justify-center text-center">
-                            <!-- Loading State -->
-                            <div class="space-y-2">
-                                <i class="fa-solid fa-circle-notch text-3xl text-yellow-500 animate-spin"></i>
-                                <p class="text-xs text-gray-400">ژوندی چارټ باریږي...</p>
-                            </div>
-                        </div>
+                        <canvas id="native-trading-chart" class="w-full h-full block"></canvas>
                         
                         <!-- Chart Overlay indicators status -->
                         <div class="absolute top-4 left-4 z-10 bg-panelBg/95 border border-yellow-600/20 p-3.5 rounded-xl text-[11px] flex flex-col gap-2 backdrop-blur shadow-2xl">
@@ -393,7 +382,7 @@
 
                     <div class="space-y-3 text-xs leading-relaxed text-gray-300">
                         <div>
-                            <span class="text-yellow-500 font-bold block" id="q1-ps">پوښتنه: د ننوتلو (Entry) غوره ټایم فریم کوم دی؟</span>
+                            <span class="text-yellow-500 font-bold block" id="q1-ps">پوښتنه: د ننوتلو (Entry) غوره ټایم فریم کوم دی？</span>
                             <span class="text-yellow-500 font-bold block hidden font-sans" id="q1-en">Q: What is the optimal entry timeframe?</span>
                             <p class="text-gray-400 mt-1" id="a1-ps">
                                 کله چې تاسو تحلیل په غټ ټایم فریم کې کړئ لکه د **۱ ورځ، ۴ ساعته، ۳ ساعته، یا ۲ ساعته** (HTF)؛ نو ستاسو د ننوتلو د دقیقې نقطې د موندلو غوره کچه د **۱۵ دقیقو (15M) او ۵ دقیقو (5M)** کچې دي. کله چې هلته CHoCH رامنځته شي، نو داخله واخلئ.
@@ -407,7 +396,7 @@
                             <span class="text-yellow-500 font-bold block" id="q2-ps">پوښتنه: معامله څومره وخت وساتو او څومره فیپس ګټه ولرو？</span>
                             <span class="text-yellow-500 font-bold block hidden font-sans" id="q2-en">Q: How long to hold and what target pips?</span>
                             <p class="text-gray-400 mt-1" id="a2-ps">
-                                د سرو زرو (**XAUUSD**) لپاره د سټاپ لاس اندازه د ۳۰ تر ۵۰ پپس پورې او هدف د **۱۰۰ تر ۲۰۰ پپس** پورې ترټولو غوره دی چې شاوخوا **۲ تر ۶ ساعته** وخت نیسي. د **EURUSD** لپاره هدف د **۳۰ تر ۷۰ پپس** پورې وي او موده یې د **۶ تر ۲۴ ساعتونو** پورې وي.
+                                د سرو زرو (**XAUUSD**) لپاره د سټاپ لاس اندازه د ۳۰ تر ۵۰ پپس پورې او هدف د **۱۰۰ تر ۲۰۰ پپس** پورې ترټولو غوره دی چې شاوخوا **۲ تر ۶ ساعته** وخت نیسي. د **EURUSD** لپاره هدف د **۳۰ تر ۷ۆ پپس** پورې وي او موده یې د **۶ تر ۲۴ ساعتونو** پورې وي.
                             </p>
                             <p class="text-gray-400 mt-1 hidden font-sans" id="a2-en">
                                 For Gold (**XAUUSD**), a stop loss of 30-50 pips and take profit of **100-200 pips** is ideal, usually playing out in **2 to 6 hours**. For **EURUSD**, target **30-70 pips** with a hold time of **6 to 24 hours**.
@@ -498,8 +487,10 @@
         let activeTF = '4H';
         let activeAnalysisMode = 'bullish';
         
-        let chart = null;
-        let candleSeries = null;
+        let canvas = null;
+        let ctx = null;
+        let lastRenderedData = [];
+        let lastRenderedMarkers = [];
         let chartLoaded = false;
         
         let livePrices = {
@@ -723,58 +714,185 @@
             updateUIDecision();
         }
 
+        // Native HTML5 Canvas Chart Drawing Engine
         function initChart() {
-            const chartDiv = document.getElementById('trading-chart');
-            chartDiv.innerHTML = ''; 
-
-            try {
-                if (typeof LightweightCharts === 'undefined') {
-                    throw new Error("TradingView Lightweight Charts Library is blocked or not loaded");
-                }
-                
-                chart = LightweightCharts.createChart(chartDiv, {
-                    layout: {
-                        background: { color: '#05070A' },
-                        textColor: '#9CA3AF',
-                    },
-                    grid: {
-                        vertLines: { color: '#11151D' },
-                        horzLines: { color: '#11151D' },
-                    },
-                    crosshair: {
-                        mode: LightweightCharts.CrosshairMode.Normal,
-                    },
-                    rightPriceScale: {
-                        borderColor: '#1F2937',
-                    },
-                    timeScale: {
-                        borderColor: '#1F2937',
-                        timeVisible: true,
-                    },
-                });
-
-                candleSeries = chart.addCandlestickSeries({
-                    upColor: '#00C076',
-                    downColor: '#FF3B30',
-                    borderUpColor: '#00C076',
-                    borderDownColor: '#FF3B30',
-                    wickUpColor: '#00C076',
-                    wickDownColor: '#FF3B30',
-                });
-                chartLoaded = true;
-            } catch (err) {
-                console.log("Chart failed, fallback to native price and calculator layout", err);
-                chartDiv.innerHTML = `
-                    <div class="w-full h-full flex flex-col items-center justify-center text-center p-4">
-                        <i class="fa-solid fa-triangle-exclamation text-3xl text-yellow-500 mb-2"></i>
-                        <p class="text-sm font-bold text-white">د TradingView چارټ کتابتون بند دی (او یا نټ کمزوری دی)</p>
-                        <p class="text-[11px] text-gray-400 mt-1">خو بیغمه اوسئ! ژوندي نرخونه، محاسبین او نښې لاندې پوره کار کوي.</p>
-                    </div>
-                `;
-            }
+            canvas = document.getElementById('native-trading-chart');
+            ctx = canvas.getContext('2d');
+            
+            const resizeCanvas = () => {
+                const parent = canvas.parentElement;
+                canvas.width = parent.clientWidth * window.devicePixelRatio;
+                canvas.height = parent.clientHeight * window.devicePixelRatio;
+                ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+                drawNativeChart();
+            };
+            
+            window.addEventListener('resize', resizeCanvas);
+            
+            const parent = canvas.parentElement;
+            canvas.width = parent.clientWidth * window.devicePixelRatio;
+            canvas.height = parent.clientHeight * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            chartLoaded = true;
 
             fetchRealWorldRates();
             setInterval(fetchRealWorldRates, 15000);
+        }
+
+        function drawNativeChart() {
+            if (!ctx || lastRenderedData.length === 0) return;
+
+            const width = canvas.width / window.devicePixelRatio;
+            const height = canvas.height / window.devicePixelRatio;
+            
+            ctx.fillStyle = '#05070A';
+            ctx.fillRect(0, 0, width, height);
+
+            const paddingRight = 65;
+            const paddingTop = 40;
+            const paddingBottom = 40;
+            const plotWidth = width - paddingRight;
+            const plotHeight = height - paddingTop - paddingBottom;
+
+            let minPrice = Infinity;
+            let maxPrice = -Infinity;
+            for (let candle of lastRenderedData) {
+                if (candle.low < minPrice) minPrice = candle.low;
+                if (candle.high > maxPrice) maxPrice = candle.high;
+            }
+
+            const pricePadding = (maxPrice - minPrice) * 0.15;
+            maxPrice += pricePadding;
+            minPrice -= pricePadding;
+            const priceRange = maxPrice - minPrice;
+
+            const getY = (price) => {
+                return paddingTop + (1 - (price - minPrice) / priceRange) * plotHeight;
+            };
+
+            ctx.strokeStyle = '#11151D';
+            ctx.lineWidth = 1;
+            
+            ctx.font = '10px monospace';
+            ctx.fillStyle = '#9CA3AF';
+            ctx.textAlign = 'left';
+            
+            const gridCount = 5;
+            for (let i = 0; i <= gridCount; i++) {
+                const targetPrice = minPrice + (priceRange / gridCount) * i;
+                const y = getY(targetPrice);
+                
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(plotWidth, y);
+                ctx.stroke();
+                
+                ctx.fillText(targetPrice.toFixed(activePair === 'XAUUSD' ? 2 : 4), plotWidth + 6, y + 3);
+            }
+
+            ctx.strokeStyle = '#1F2937';
+            ctx.beginPath();
+            ctx.moveTo(plotWidth, 0);
+            ctx.lineTo(plotWidth, height);
+            ctx.stroke();
+
+            const candleWidth = plotWidth / lastRenderedData.length;
+            const stepPrice = activePair === 'XAUUSD' ? 1.5 : 0.0006;
+            const basePrice = livePrices[activePair];
+
+            ctx.lineWidth = 1;
+            
+            if (activeAnalysisMode === 'bullish') {
+                const obTopY = getY(basePrice - stepPrice * 1.5);
+                const obBottomY = getY(basePrice - stepPrice * 3.5);
+                ctx.fillStyle = 'rgba(59, 130, 246, 0.13)';
+                ctx.strokeStyle = 'rgba(59, 130, 246, 0.4)';
+                ctx.fillRect(16 * candleWidth, obTopY, candleWidth * 6, obBottomY - obTopY);
+                ctx.strokeRect(16 * candleWidth, obTopY, candleWidth * 6, obBottomY - obTopY);
+
+                const fvgTopY = getY(basePrice + stepPrice * 1.5);
+                const fvgBottomY = getY(basePrice + stepPrice * 0.2);
+                ctx.fillStyle = 'rgba(212, 175, 55, 0.12)';
+                ctx.strokeStyle = 'rgba(212, 175, 55, 0.35)';
+                ctx.fillRect(20 * candleWidth, fvgTopY, candleWidth * 5, fvgBottomY - fvgTopY);
+                ctx.strokeRect(20 * candleWidth, fvgTopY, candleWidth * 5, fvgBottomY - fvgTopY);
+            } else {
+                const obTopY = getY(basePrice + stepPrice * 3.5);
+                const obBottomY = getY(basePrice + stepPrice * 1.5);
+                ctx.fillStyle = 'rgba(239, 68, 68, 0.13)';
+                ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+                ctx.fillRect(16 * candleWidth, obTopY, candleWidth * 6, obBottomY - obTopY);
+                ctx.strokeRect(16 * candleWidth, obTopY, candleWidth * 6, obBottomY - obTopY);
+
+                const fvgTopY = getY(basePrice - stepPrice * 0.2);
+                const fvgBottomY = getY(basePrice - stepPrice * 1.5);
+                ctx.fillStyle = 'rgba(212, 175, 55, 0.12)';
+                ctx.strokeStyle = 'rgba(212, 175, 55, 0.35)';
+                ctx.fillRect(20 * candleWidth, fvgTopY, candleWidth * 5, fvgBottomY - fvgTopY);
+                ctx.strokeRect(20 * candleWidth, fvgTopY, candleWidth * 5, fvgBottomY - fvgTopY);
+            }
+
+            for (let i = 0; i < lastRenderedData.length; i++) {
+                const candle = lastRenderedData[i];
+                const x = i * candleWidth + (candleWidth / 2);
+                
+                const yOpen = getY(candle.open);
+                const yClose = getY(candle.close);
+                const yHigh = getY(candle.high);
+                const yLow = getY(candle.low);
+                
+                const isGreen = candle.close >= candle.open;
+                
+                ctx.strokeStyle = isGreen ? '#00C076' : '#FF3B30';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(x, yHigh);
+                ctx.lineTo(x, yLow);
+                ctx.stroke();
+                
+                ctx.fillStyle = isGreen ? '#00C076' : '#FF3B30';
+                const bodyWidth = candleWidth * 0.72;
+                const rectY = Math.min(yOpen, yClose);
+                const rectHeight = Math.max(1, Math.abs(yOpen - yClose));
+                ctx.fillRect(x - bodyWidth/2, rectY, bodyWidth, rectHeight);
+            }
+
+            ctx.textAlign = 'center';
+            for (let marker of lastRenderedMarkers) {
+                const idx = lastRenderedData.findIndex(c => c.time === marker.time);
+                if (idx === -1) continue;
+                
+                const x = idx * candleWidth + (candleWidth / 2);
+                const isBelow = marker.position === 'belowBar';
+                const y = isBelow ? getY(lastRenderedData[idx].low) + 20 : getY(lastRenderedData[idx].high) - 20;
+                
+                ctx.fillStyle = marker.color;
+                ctx.beginPath();
+                if (isBelow) {
+                    ctx.moveTo(x, y - 8);
+                    ctx.lineTo(x - 5, y);
+                    ctx.lineTo(x + 5, y);
+                } else {
+                    ctx.moveTo(x, y + 8);
+                    ctx.lineTo(x - 5, y);
+                    ctx.lineTo(x + 5, y);
+                }
+                ctx.fill();
+
+                ctx.font = 'bold 9px Inter, sans-serif';
+                const textWidth = ctx.measureText(marker.text).width + 12;
+                ctx.fillStyle = '#11151D';
+                ctx.strokeStyle = marker.color;
+                ctx.lineWidth = 1;
+                
+                const rectX = x - textWidth / 2;
+                const rectY = isBelow ? y + 2 : y - 18;
+                ctx.fillRect(rectX, rectY, textWidth, 16);
+                ctx.strokeRect(rectX, rectY, textWidth, 16);
+                
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillText(marker.text, x, rectY + 11);
+            }
         }
 
         function selectPair(pair) {
@@ -1069,16 +1187,11 @@
                 }
             }
 
-            if (chartLoaded && candleSeries) {
-                try {
-                    candleSeries.setData(data);
-                    candleSeries.setMarkers(markers);
-                    chart.timeScale().fitContent();
-                } catch (e) {
-                    console.log("Error binding data", e);
-                }
-            }
-
+            lastRenderedData = data;
+            lastRenderedMarkers = markers;
+            
+            drawNativeChart();
+            
             startTickSimulation(p);
             updateUIDecision();
         }
@@ -1161,3 +1274,4 @@
     </script>
 </body>
 </html>
+,path:/home/user/ict-dashboard/index.html}
