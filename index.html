@@ -8,7 +8,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Lightweight Charts CDN -->
+    
+    <!-- Robust Multi-CDN Chart Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
     <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
     
     <script>
@@ -202,7 +204,13 @@
 
                     <!-- Chart Div -->
                     <div class="relative w-full bg-[#05070A] rounded-xl border border-gray-800 p-1" style="height: 400px;">
-                        <div id="trading-chart" class="w-full h-full"></div>
+                        <div id="trading-chart" class="w-full h-full flex items-center justify-center text-center">
+                            <!-- Loading State -->
+                            <div class="space-y-2">
+                                <i class="fa-solid fa-circle-notch text-3xl text-yellow-500 animate-spin"></i>
+                                <p class="text-xs text-gray-400">ژوندی چارټ باریږي...</p>
+                            </div>
+                        </div>
                         
                         <!-- Chart Overlay indicators status -->
                         <div class="absolute top-4 left-4 z-10 bg-panelBg/95 border border-yellow-600/20 p-3.5 rounded-xl text-[11px] flex flex-col gap-2 backdrop-blur shadow-2xl">
@@ -384,7 +392,7 @@
 
                     <div class="space-y-3 text-xs leading-relaxed text-gray-300">
                         <div>
-                            <span class="text-yellow-500 font-bold block" id="q1-ps">پوښتنه: د ننوتلو (Entry) غوره ټایم فریم کوم دی؟</span>
+                            <span class="text-yellow-500 font-bold block" id="q1-ps">پوښتنه: د ننوتلو (Entry) غوره ټایم فریم کوم دی？</span>
                             <span class="text-yellow-500 font-bold block hidden font-sans" id="q1-en">Q: What is the optimal entry timeframe?</span>
                             <p class="text-gray-400 mt-1" id="a1-ps">
                                 کله چې تاسو تحلیل په غټ ټایم فریم کې کړئ لکه د **۱ ورځ، ۴ ساعته، ۳ ساعته، یا ۲ ساعته** (HTF)؛ نو ستاسو د ننوتلو د دقیقې نقطې د موندلو غوره کچه د **۱۵ دقیقو (15M) او ۵ دقیقو (5M)** کچې دي. کله چې هلته CHoCH رامنځته شي، نو داخله واخلئ.
@@ -395,7 +403,7 @@
                         </div>
                         
                         <div>
-                            <span class="text-yellow-500 font-bold block" id="q2-ps">پوښتنه: معامله څومره وخت وساتو او څومره فیپس ګټه ولرو؟</span>
+                            <span class="text-yellow-500 font-bold block" id="q2-ps">پوښتنه: معامله څومره وخت وساتو او څومره فیپس ګټه ولرو？</span>
                             <span class="text-yellow-500 font-bold block hidden font-sans" id="q2-en">Q: How long to hold and what target pips?</span>
                             <p class="text-gray-400 mt-1" id="a2-ps">
                                 د سرو زرو (**XAUUSD**) لپاره د سټاپ لاس اندازه د ۳۰ تر ۵۰ پپس پورې او هدف د **۱۰۰ تر ۲۰۰ پپس** پورې ترټولو غوره دی چې شاوخوا **۲ تر ۶ ساعته** وخت نیسي. د **EURUSD** لپاره هدف د **۳۰ تر ۷۰ پپس** پورې وي او موده یې د **۶ تر ۲۴ ساعتونو** پورې وي.
@@ -450,10 +458,8 @@
 
     <!-- DYNAMIC CORE ANALYSIS SCRIPTS -->
     <script>
-        // Access Security Check
         const SECRET_KEY = "NoorAhmad2026";
 
-        // Automatically unlock if key is saved in browser
         window.addEventListener('DOMContentLoaded', () => {
             if (localStorage.getItem('noor_ahmad_unlocked') === 'true') {
                 document.getElementById('lock-screen').style.display = 'none';
@@ -493,16 +499,16 @@
         
         let chart = null;
         let candleSeries = null;
+        let chartLoaded = false;
         
-        // Dynamic Live Prices loaded via Free APIs!
         let livePrices = {
-            'XAUUSD': 2035.40, // Default fallback
-            'EURUSD': 1.0850   // Default fallback
+            'XAUUSD': 2035.40, 
+            'EURUSD': 1.0850   
         };
 
-        // Fetch Actual Real Live Prices in Real-Time! (No Key Needed APIs)
+        // Fetch Actual Real Live Prices in Real-Time!
         async function fetchRealWorldRates() {
-            // 1. Fetch Real Gold Spot Price (goldprice.dev - CORS enabled, no key)
+            // 1. Fetch Real Gold Spot Price
             try {
                 const response = await fetch("https://api.goldprice.dev/v1/prices?symbol=XAU-USD-SPOT");
                 const data = await response.json();
@@ -510,14 +516,14 @@
                     const price = parseFloat(data.symbols[0].price);
                     if (!isNaN(price) && price > 100) {
                         livePrices['XAUUSD'] = price;
-                        console.log("Real-Time Gold Fetched Successfully:", price);
+                        console.log("Real Gold Updated:", price);
                     }
                 }
             } catch (e) {
-                console.log("Failed to fetch gold price, using simulator fallback", e);
+                console.log("Failed to fetch gold price, using default values", e);
             }
 
-            // 2. Fetch Real EUR/USD rate (open.er-api.com - CORS enabled, no key)
+            // 2. Fetch Real EUR/USD rate
             try {
                 const response = await fetch("https://open.er-api.com/v6/latest/USD");
                 const data = await response.json();
@@ -526,23 +532,20 @@
                     if (!isNaN(rate) && rate > 0) {
                         const eurusdRate = 1 / rate;
                         livePrices['EURUSD'] = eurusdRate;
-                        console.log("Real-Time EURUSD Fetched Successfully:", eurusdRate);
+                        console.log("Real EURUSD Updated:", eurusdRate);
                     }
                 }
             } catch (e) {
-                console.log("Failed to fetch EURUSD rate, using simulator fallback", e);
+                console.log("Failed to fetch EURUSD rate, using default values", e);
             }
 
-            // Trigger the analysis redraw to update prices on chart and dashboard!
             runAnalysis(activeAnalysisMode);
         }
 
-        // Define Offsets so that signals scale strictly and perfectly with real live prices!
         const getAssetData = (pair, tf, mode) => {
             const base = livePrices[pair];
             const isXau = pair === 'XAUUSD';
             
-            // Generate highly realistic setup coordinates based on the real-time live price!
             if (isXau) {
                 if (tf === '1D') {
                     if (mode === 'bullish') {
@@ -677,7 +680,6 @@
             }
         };
 
-        // Switch Language
         function toggleLanguage(lang) {
             currentLang = lang;
             const body = document.getElementById('app-body');
@@ -722,66 +724,71 @@
             updateUIDecision();
         }
 
-        // Initialize TradingView Chart
         function initChart() {
             const chartDiv = document.getElementById('trading-chart');
             chartDiv.innerHTML = ''; 
 
-            chart = LightweightCharts.createChart(chartDiv, {
-                layout: {
-                    background: { color: '#05070A' },
-                    textColor: '#9CA3AF',
-                },
-                grid: {
-                    vertLines: { color: '#11151D' },
-                    horzLines: { color: '#11151D' },
-                },
-                crosshair: {
-                    mode: LightweightCharts.CrosshairMode.Normal,
-                },
-                rightPriceScale: {
-                    borderColor: '#1F2937',
-                },
-                timeScale: {
-                    borderColor: '#1F2937',
-                    timeVisible: true,
-                },
-            });
+            try {
+                if (typeof LightweightCharts === 'undefined') {
+                    throw new Error("TradingView Lightweight Charts Library is blocked or not loaded");
+                }
+                
+                chart = LightweightCharts.createChart(chartDiv, {
+                    layout: {
+                        background: { color: '#05070A' },
+                        textColor: '#9CA3AF',
+                    },
+                    grid: {
+                        vertLines: { color: '#11151D' },
+                        horzLines: { color: '#11151D' },
+                    },
+                    crosshair: {
+                        mode: LightweightCharts.CrosshairMode.Normal,
+                    },
+                    rightPriceScale: {
+                        borderColor: '#1F2937',
+                    },
+                    timeScale: {
+                        borderColor: '#1F2937',
+                        timeVisible: true,
+                    },
+                });
 
-            candleSeries = chart.addCandlestickSeries({
-                upColor: '#00C076',
-                downColor: '#FF3B30',
-                borderUpColor: '#00C076',
-                borderDownColor: '#FF3B30',
-                wickUpColor: '#00C076',
-                wickDownColor: '#FF3B30',
-            });
+                candleSeries = chart.addCandlestickSeries({
+                    upColor: '#00C076',
+                    downColor: '#FF3B30',
+                    borderUpColor: '#00C076',
+                    borderDownColor: '#FF3B30',
+                    wickUpColor: '#00C076',
+                    wickDownColor: '#FF3B30',
+                });
+                chartLoaded = true;
+            } catch (err) {
+                console.log("Chart failed, fallback to native price and calculator layout", err);
+                chartDiv.innerHTML = `
+                    <div class="w-full h-full flex flex-col items-center justify-center text-center p-4">
+                        <i class="fa-solid fa-triangle-exclamation text-3xl text-yellow-500 mb-2"></i>
+                        <p class="text-sm font-bold text-white">د TradingView چارټ کتابتون بند دی (او یا نټ کمزوری دی)</p>
+                        <p class="text-[11px] text-gray-400 mt-1">خو بیغمه اوسئ! ژوندي نرخونه، محاسبین او نښې لاندې پوره کار کوي.</p>
+                    </div>
+                `;
+            }
 
-            const resizeObserver = new ResizeObserver(entries => {
-                if (entries.length === 0 || !chart) return;
-                const { width, height } = entries[0].contentRect;
-                chart.resize(width, height);
-            });
-            resizeObserver.observe(chartDiv);
-
-            // Fetch Real-World Rates on Startup!
             fetchRealWorldRates();
-            // Automatically update real world rates every 15 seconds!
             setInterval(fetchRealWorldRates, 15000);
         }
 
-        // Handle Active Pair selection
         function selectPair(pair) {
             activePair = pair;
             const btnXau = document.getElementById('pair-xau');
-            const btnEur = document.getElementById('pair-eur');
+            const btnCamp = document.getElementById('pair-eur');
             
             if (pair === 'XAUUSD') {
                 btnXau.className = 'px-3 py-1.5 rounded-md text-xs font-bold bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 transition-all font-sans';
-                btnEur.className = 'px-3 py-1.5 rounded-md text-xs font-bold text-gray-400 hover:text-white transition-all font-sans';
+                btnCamp.className = 'px-3 py-1.5 rounded-md text-xs font-bold text-gray-400 hover:text-white transition-all font-sans';
                 document.getElementById('usr-pips').value = 40;
             } else {
-                btnEur.className = 'px-3 py-1.5 rounded-md text-xs font-bold bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 transition-all font-sans';
+                btnCamp.className = 'px-3 py-1.5 rounded-md text-xs font-bold bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 transition-all font-sans';
                 btnXau.className = 'px-3 py-1.5 rounded-md text-xs font-bold text-gray-400 hover:text-white transition-all font-sans';
                 document.getElementById('usr-pips').value = 15;
             }
@@ -790,7 +797,6 @@
             runAnalysis(activeAnalysisMode);
         }
 
-        // Handle Timeframe Selection
         function selectTimeframe(tf) {
             activeTF = tf;
             const tfs = ['1D', '4H', '3H', '2H'];
@@ -811,7 +817,6 @@
             document.getElementById('chart-asset-title').innerHTML = `${activePair === 'XAUUSD' ? 'XAU/USD (Gold)' : 'EUR/USD'} &bull; ${activeTF} Analysis`;
         }
 
-        // Primary Algorithmic Decision Updating
         function updateUIDecision() {
             const pairData = getAssetData(activePair, activeTF, activeAnalysisMode);
             if (!pairData) return;
@@ -885,42 +890,6 @@
             let calculatedPips = Math.round(isXau ? diff * 10 : diff * 10000);
             document.getElementById('usr-pips').value = calculatedPips;
             calculateUserLots();
-        }
-
-        function updateConfluenceChecklist(pairData) {
-            const chkLiq = document.getElementById('chk-liq');
-            const chkMss = document.getElementById('chk-mss');
-            const chkBos = document.getElementById('chk-bos');
-            const chkFvg = document.getElementById('chk-fvg');
-            const chkOb = document.getElementById('chk-ob');
-            
-            const isWait = pairData.signal.includes('WAIT') || pairData.signal.includes('انتظار');
-
-            if (isWait) {
-                setCheckBadge(chkLiq, 'val-liq', 'نشته (NO)', false);
-                setCheckBadge(chkMss, 'val-mss', 'نشته (NO)', false);
-                setCheckBadge(chkBos, 'val-bos', 'کمزوری (LOW)', false);
-                setCheckBadge(chkFvg, 'val-fvg', 'نشته (NO)', false);
-                setCheckBadge(chkOb, 'val-ob', 'غیرفعال (NO)', false);
-            } else {
-                setCheckBadge(chkLiq, 'val-liq', 'پاک شو (YES)', true);
-                setCheckBadge(chkMss, 'val-mss', 'تایید (YES)', true);
-                setCheckBadge(chkBos, 'val-bos', 'مات شو (YES)', true);
-                setCheckBadge(chkFvg, 'val-fvg', 'فعال (YES)', true);
-                setCheckBadge(chkOb, 'val-ob', 'موندل شو (YES)', true);
-            }
-        }
-
-        function setCheckBadge(parentEl, childId, text, active) {
-            const textEl = document.getElementById(childId);
-            textEl.innerText = text;
-            if (active) {
-                parentEl.className = "bg-panelBg border border-emerald-500/20 p-2 rounded-lg";
-                textEl.className = "text-emerald-400 font-bold";
-            } else {
-                parentEl.className = "bg-panelBg border border-red-500/10 p-2 rounded-lg";
-                textEl.className = "text-red-400 font-bold";
-            }
         }
 
         function runAnalysis(mode) {
@@ -1101,9 +1070,15 @@
                 }
             }
 
-            candleSeries.setData(data);
-            candleSeries.setMarkers(markers);
-            chart.timeScale().fitContent();
+            if (chartLoaded && candleSeries) {
+                try {
+                    candleSeries.setData(data);
+                    candleSeries.setMarkers(markers);
+                    chart.timeScale().fitContent();
+                } catch (e) {
+                    console.log("Error binding data", e);
+                }
+            }
 
             startTickSimulation(p);
             updateUIDecision();
@@ -1114,10 +1089,12 @@
             if (tickInterval) clearInterval(tickInterval);
             let p = basePrice;
             
+            const isXau = activePair === 'XAUUSD';
+            document.getElementById('live-price-ticker').innerText = `${activePair} LIVE: ${p.toFixed(isXau ? 2 : 5)}`;
+
             tickInterval = setInterval(() => {
                 let change = (Math.random() - 0.5) * (activePair === 'XAUUSD' ? 0.2 : 0.00005);
                 p += change;
-                const isXau = activePair === 'XAUUSD';
                 document.getElementById('live-price-ticker').innerText = `${activePair} LIVE: ${p.toFixed(isXau ? 2 : 5)}`;
             }, 1000);
         }
