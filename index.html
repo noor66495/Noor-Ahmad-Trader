@@ -9,7 +9,8 @@
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Robust Multi-CDN Chart Libraries -->
+    <!-- Local Highly Resilient Chart Library fallback to CDNs -->
+    <script src="./lightweight-charts.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
     <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
     
@@ -392,7 +393,7 @@
 
                     <div class="space-y-3 text-xs leading-relaxed text-gray-300">
                         <div>
-                            <span class="text-yellow-500 font-bold block" id="q1-ps">پوښتنه: د ننوتلو (Entry) غوره ټایم فریم کوم دی？</span>
+                            <span class="text-yellow-500 font-bold block" id="q1-ps">پوښتنه: د ننوتلو (Entry) غوره ټایم فریم کوم دی؟</span>
                             <span class="text-yellow-500 font-bold block hidden font-sans" id="q1-en">Q: What is the optimal entry timeframe?</span>
                             <p class="text-gray-400 mt-1" id="a1-ps">
                                 کله چې تاسو تحلیل په غټ ټایم فریم کې کړئ لکه د **۱ ورځ، ۴ ساعته، ۳ ساعته، یا ۲ ساعته** (HTF)؛ نو ستاسو د ننوتلو د دقیقې نقطې د موندلو غوره کچه د **۱۵ دقیقو (15M) او ۵ دقیقو (5M)** کچې دي. کله چې هلته CHoCH رامنځته شي، نو داخله واخلئ.
@@ -502,13 +503,12 @@
         let chartLoaded = false;
         
         let livePrices = {
-            'XAUUSD': 2035.40, 
+            'XAUUSD': 2031.06, 
             'EURUSD': 1.0850   
         };
 
         // Fetch Actual Real Live Prices in Real-Time!
         async function fetchRealWorldRates() {
-            // 1. Fetch Real Gold Spot Price
             try {
                 const response = await fetch("https://api.goldprice.dev/v1/prices?symbol=XAU-USD-SPOT");
                 const data = await response.json();
@@ -523,7 +523,6 @@
                 console.log("Failed to fetch gold price, using default values", e);
             }
 
-            // 2. Fetch Real EUR/USD rate
             try {
                 const response = await fetch("https://open.er-api.com/v6/latest/USD");
                 const data = await response.json();
@@ -1020,7 +1019,7 @@
                 let open2 = p;
                 let close2 = p - (step * 3.2);
                 p = close2;
-                data.push({ time: time.getTime() / 1000, open: open2, high: open2 + (step * 0.1), low: close2 - (step * 0.2), close: p });
+                data.push({ time: time.getTime() / 1000, open: open2, high: close2 + (step * 0.1), low: close2 - (step * 0.2), close: p });
                 markers.push({
                     time: time.getTime() / 1000,
                     position: 'belowBar',
