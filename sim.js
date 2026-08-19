@@ -16,8 +16,7 @@ function rngFor(seed){
 
 /* ---------- Constants ---------- */
 const PAIRS = {
-  XAUUSD: { name:"XAU/USD", base: 3548.0, vol: 0.0009, pip: 0.10, dec: 2, seed: 101 },
-  EURUSD: { name:"EUR/USD", base: 1.1462, vol: 0.00035, pip: 0.0001, dec: 5, seed: 202 }
+  XAUUSD: { name:"XAU/USD", base: 4476.0, vol: 0.0009, pip: 0.10, dec: 2, seed: 101 }
 };
 const TFS = {
   86400:"1D", 14400:"4H", 10800:"3H", 7200:"2H", 3600:"1H", 1800:"30M", 900:"15M", 300:"5M"
@@ -52,28 +51,45 @@ function genSeries(sym, tfSec, count=340){
 }
 
 /* ---------- Market state ---------- */
-const Market = { XAUUSD: { series: {}, last:null }, EURUSD: { series: {}, last:null } };
+const Market = { XAUUSD: { series: {}, last:null, real:false } };
 let tickCount = 0;
 
 function ensureSeries(sym, tfSec){
   const M = Market[sym];
   if (!M.series[tfSec]) {
-    const s = genSeries(sym, tfSec);
-    M.series[tfSec] = s;
-    M.last = { price: s[s.length-1].c, dayHigh: -Infinity, dayLow: Infinity };
-    for (let i=Math.max(0,s.length-288); i<s.length; i++){
-      M.last.dayHigh = Math.max(M.last.dayHigh, s[i].h);
-      M.last.dayLow = Math.min(M.last.dayLow, s[i].l);
+    /* 1) cached REAL candles from a previous live session (instant, near-real) */
+    const cached = (typeof FEED !== "undefined" && FEED.sourcePref !== "demo") ? FEED.hydrate(sym, tfSec) : null;
+    if (cached && cached.length > 30){
+      M.series[tfSec] = cached.slice();
+      M.real = true;
+      M.last = { price: cached[cached.length-1].c, dayHigh: -Infinity, dayLow: Infinity };
+      for (let i=Math.max(0, cached.length-288); i<cached.length; i++){
+        M.last.dayHigh = Math.max(M.last.dayHigh, cached[i].h);
+        M.last.dayLow = Math.min(M.last.dayLow, cached[i].l);
+      }
+    } else {
+      /* 2) demo generator (replaced by real data within seconds once FEED connects) */
+      const s = genSeries(sym, tfSec);
+      M.series[tfSec] = s;
+      M.real = false;
+      M.last = { price: s[s.length-1].c, dayHigh: -Infinity, dayLow: Infinity };
+      for (let i=Math.max(0,s.length-288); i<s.length; i++){
+        M.last.dayHigh = Math.max(M.last.dayHigh, s[i].h);
+        M.last.dayLow = Math.min(M.last.dayLow, s[i].l);
+      }
     }
   }
+  /* request/refresh real data for this series (no-op in demo mode) */
+  if (typeof FEED !== "undefined" && FEED.pairLive(sym)) FEED.requestSeries(sym, tfSec);
   return M.series[tfSec];
 }
 
-/* Advance the market one tick (called ~every 1.4s). Updates the 5M series
-   (used for sparklines) and any series currently viewed. */
+/* Advance the market one tick (called ~every 1.4s). REAL data pairs are driven
+   by FEED ticks (websocket / REST polling) instead of this simulator. */
 function tickMarket(){
   tickCount++;
   for (const sym of Object.keys(PAIRS)){
+    if (typeof FEED !== "undefined" && FEED.pairLive(sym)) continue; // live pair — real ticks only
     const P = PAIRS[sym];
     const M = Market[sym];
     const tf = 300; // 5M base series always live
@@ -425,7 +441,7 @@ function seedHistory(){
   const R = rngFor(777);
   const out = [];
   const now = Date.now();
-  const syms = ["XAUUSD","XAUUSD","EURUSD","XAUUSD","EURUSD","XAUUSD","EURUSD","XAUUSD","XAUUSD","EURUSD","XAUUSD","EURUSD","XAUUSD","EURUSD","XAUUSD"];
+  const syms = ["XAUUSD","XAUUSD","XAUUSD","XAUUSD","XAUUSD","XAUUSD","XAUUSD","XAUUSD","XAUUSD","XAUUSD","XAUUSD","XAUUSD","XAUUSD","XAUUSD","XAUUSD"];
   const dirs = [1,1,-1,1,-1,1,1,-1,1,1,-1,1,-1,1,-1];
   const tfs = [3600,900,3600,14400,3600,900,3600,3600,14400,900,3600,3600,900,14400,3600];
   syms.forEach((sym,i)=>{
@@ -463,11 +479,9 @@ function newsEvents(){
     { title:"Retail Sales — US",            cur:"USD", impact:"med",  time: at(2026,8,14,13,30), prev:"0.3%",  fcst:"0.4%",  tag:"Retail" },
     { title:"FOMC — Fed Interest Rate Decision", cur:"USD", impact:"high", time: at(2026,9,16,19,0), prev:"3.75%", fcst:"3.75%", tag:"FOMC" },
     { title:"GDP — US Q2 (2nd estimate)",   cur:"USD", impact:"high", time: at(2026,8,27,13,30), prev:"2.1%",  fcst:"2.3%",  tag:"GDP" },
-    { title:"ECB — Interest Rate Decision", cur:"EUR", impact:"high", time: at(2026,9,10,13,15), prev:"2.00%", fcst:"1.75%", tag:"ECB" },
     { title:"NFP — US Non-Farm Payrolls",   cur:"USD", impact:"high", time: at(2026,9,4,13,30),  prev:"165K", fcst:"155K",  tag:"NFP" },
     { title:"Unemployment Claims — US",     cur:"USD", impact:"med",  time: at(2026,8,13,13,30), prev:"230K",  fcst:"228K",  tag:"Claims" },
     { title:"ISM Manufacturing PMI — US",   cur:"USD", impact:"med",  time: at(2026,9,1,15,0),  prev:"49.8",  fcst:"50.1",  tag:"ISM" },
-    { title:"Michigan Consumer Sentiment",  cur:"USD", impact:"med",  time: at(2026,8,14,15,0),  prev:"62.5",  fcst:"63.0",  tag:"UMich" },
-    { title:"BoE — Interest Rate Decision", cur:"GBP", impact:"high", time: at(2026,9,17,12,0),  prev:"3.75%", fcst:"3.75%", tag:"BoE" }
+    { title:"Michigan Consumer Sentiment",  cur:"USD", impact:"med",  time: at(2026,8,14,15,0),  prev:"62.5",  fcst:"63.0",  tag:"UMich" }
   ];
 }

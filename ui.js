@@ -183,8 +183,9 @@ function countdownParts(ms){
 function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 
 /* ---------- Analysis refresh (debounced per timeframe) ---------- */
-function getAnalysis(){
+function getAnalysis(force){
   const now = Date.now();
+  if (force) State.analysisAt = 0;
   if (!State.analysis || State.analysis.tf !== State.tf || State.analysis.sym !== State.pair || now - State.analysisAt > 15000){
     State.analysis = analyze(State.pair, State.tf);
     State.analysisAt = now;
@@ -217,10 +218,10 @@ function addFeed(type, msg){
 
 /* ---------- Simulated periodic alerts ---------- */
 const FEED_MSGS = {
-  buy:  ["XAU/USD — BUY signal on 1H, confidence 84%", "EUR/USD — BUY on 4H, entry 1.1482, TP 1.1540"],
-  sell: ["XAU/USD — SELL signal on 30M, confidence 78%", "EUR/USD — SELL on 1H, liquidity sweep above"],
-  wait: ["XAU/USD — WAIT: no confluence yet, watch London open", "EUR/USD — WAIT: price in OTE, await confirmation"],
-  news: ["CPI release in 3h — high volatility expected on USD", "NFP tomorrow 13:30 ET — avoid new trades before news"],
+  buy:  ["XAU/USD — BUY signal on 1H, confidence 84%", "XAU/USD — BUY on 4H, FVG support holding, confidence 79%"],
+  sell: ["XAU/USD — SELL signal on 30M, confidence 78%", "XAU/USD — SELL on 1H, liquidity sweep above equal highs"],
+  wait: ["XAU/USD — WAIT: no confluence yet, watch London open", "XAU/USD — WAIT: price in OTE, await confirmation"],
+  news: ["CPI release in 3h — high volatility expected on gold", "NFP tomorrow 13:30 ET — avoid new trades before news"],
   kz:   ["London Kill Zone opens in 25 min — prepare", "NY AM Kill Zone active — watch for liquidity sweeps"]
 };
 let alertTimer = null;
@@ -238,15 +239,53 @@ function scheduleAlerts(){
   }, 26000);
 }
 
+/* ---------- Feed (real market data) UI hooks ---------- */
+function feedBadgeHTML(){
+  if (typeof FEED === "undefined") return `<span class="dot g pulse"></span>${t("live")}`;
+  if (FEED.mode === "live") return `<span class="dot g pulse"></span>${t("feedLive")}`;
+  if (FEED.mode === "connecting") return `<span class="dot y pulse"></span>${t("feedConnecting")}`;
+  return `<span class="dot y"></span>${t("feedDemo")}`;
+}
+function updateFeedUI(){
+  /* topbar status chip */
+  const chip = document.getElementById("feed-chip");
+  if (chip){
+    let txt, dot;
+    if (FEED.mode === "live"){
+      const names = FEED.providerNames();
+      const age = FEED.ageSec();
+      dot = "g pulse";
+      txt = `${t("feedLive")} · ${names}${age != null && age < 300 ? " · " + age + "s" : ""}`;
+      chip.style.color = "";
+      chip.title = t("feedSrc") + ": " + names + " — " + t("lastUpd") + ": " + age + "s";
+    } else if (FEED.mode === "connecting"){
+      dot = "y pulse"; txt = t("feedConnecting"); chip.title = txt;
+    } else {
+      dot = "y"; txt = t("feedDemo"); chip.title = t("demoData");
+    }
+    chip.innerHTML = `<span class="dot ${dot}"></span>${txt}`;
+  }
+  /* LIVE / DEMO tags on cards */
+  document.querySelectorAll("[data-feed-badge]").forEach(el => { el.innerHTML = feedBadgeHTML(); el.classList.toggle("demo", FEED.mode === "demo"); });
+  /* notes under pages */
+  document.querySelectorAll("[data-feed-note]").forEach(el => {
+    el.textContent = FEED.mode === "live"
+      ? "✅ " + t("realNote") + " — " + FEED.providerNames()
+      : "ℹ️ " + t("demo");
+  });
+}
+
 /* ---------- Main loop ---------- */
 let loopTimer = null;
 function startLoop(){
   if (loopTimer) return;
   // warm up market series
-  ensureSeries("XAUUSD", 300); ensureSeries("EURUSD", 300);
+  ensureSeries("XAUUSD", 300);
   loopTimer = setInterval(() => {
     tickMarket();
     tickClocks();
+    getAnalysis();          // keep analysis fresh on every page (drives signal toasts)
+    updateFeedUI();
     updateTickers();
     updateDashboard();
     updateTimerPage();
@@ -263,4 +302,19 @@ function initApp(){
   startLoop();
   scheduleAlerts();
   nav("home");
+  /* real market data layer */
+  FEED_UI.onLive = (provider) => {
+    State.analysis = null; State.analysisAt = 0;   // re-analyze on real candles
+    toast(t("feedLive"), t("liveOn") + " — " + provider, "#22c55e");
+    updateFeedUI();
+    if (!["chat","calc"].includes(State.page)) renderPage();
+  };
+  FEED_UI.onDemo = (manual) => {
+    if (!manual) toast(t("feedDemo"), t("liveOff"), "#eab308");
+    updateFeedUI();
+  };
+  FEED_UI.onSwitch = (sym, provider) => {
+    toast(t("feedSrc"), PAIRS[sym].name + " → " + provider, "#3b82f6");
+  };
+  FEED.init();
 }
