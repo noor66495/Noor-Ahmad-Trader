@@ -20,14 +20,15 @@ function buildLayout(){
     ${NAV_ITEMS.map(([p,ic,key]) => `<div class="nav-item" data-page="${p}">${icon(ic)}${t(key)}</div>`).join("")}
     <div class="side-foot">
       <div><b>${t("appName")}</b> — ${t("tagline")}</div>
-      <div>${t("version")} 1.0 · ${I18N[getLang()].pro}</div>
-      <span class="ver-badge"><span class="dot g pulse"></span>${t("live")}</span>
+      <div>${t("version")} 1.1 · ${I18N[getLang()].pro}</div>
+      <span class="ver-badge" data-feed-badge><span class="dot g pulse"></span>${t("live")}</span>
     </div>
   </aside>
   <main>
     <div id="topbar">
       <div id="page-title"></div>
       <div class="top-spacer"></div>
+      <span class="clock-chip" id="feed-chip" style="cursor:pointer"></span>
       <div class="clock-chip" id="top-clock"></div>
       <button class="icon-btn" id="btn-lang" title="Language"></button>
       <button class="icon-btn" id="btn-theme" title="Theme"></button>
@@ -68,7 +69,6 @@ function renderPage(){
 function renderHome(){
   const a = getAnalysis();
   const xau = Market.XAUUSD.last || { price: PAIRS.XAUUSD.base };
-  const eur = Market.EURUSD.last || { price: PAIRS.EURUSD.base };
   const sec = document.getElementById("page-home");
   const sig = a.signal;
   const P = PAIRS[State.pair];
@@ -96,32 +96,19 @@ function renderHome(){
     </div>
   </div>
 
-  <div class="grid g2" style="margin-top:16px">
+  <div style="margin-top:16px">
     <div class="card ticker">
       <div class="ticker-head">
         <span class="ico yellow">${icon("bolt")}</span>
-        <span class="pair-name">XAU/USD</span>
-        <span class="live-tag"><span class="dot g pulse"></span>${t("live")}</span>
+        <span class="pair-name">XAU/USD — ${t("gold")}</span>
+        <span class="live-tag" data-feed-badge><span class="dot g pulse"></span>${t("live")}</span>
         <span style="flex:1"></span>
-        <span class="badge muted">${t("gold")} · USD</span>
+        <span class="badge muted" id="t-xau-src">${FEED.mode === "live" ? FEED.providerNames() : (FEED.mode === "connecting" ? t("feedConnecting") : t("feedDemo"))}</span>
       </div>
       <div class="ticker-price" id="t-xau-price">${fmtNum(xau.price, 2)}</div>
       <div class="ticker-change" id="t-xau-chg"></div>
       <canvas class="spark" id="spark-xau"></canvas>
       <div class="ticker-hl" id="t-xau-hl"></div>
-    </div>
-    <div class="card ticker">
-      <div class="ticker-head">
-        <span class="ico blue">${icon("bolt")}</span>
-        <span class="pair-name">EUR/USD</span>
-        <span class="live-tag"><span class="dot g pulse"></span>${t("live")}</span>
-        <span style="flex:1"></span>
-        <span class="badge muted">EUR · USD</span>
-      </div>
-      <div class="ticker-price" id="t-eur-price">${fmtNum(eur.price, 4)}</div>
-      <div class="ticker-change" id="t-eur-chg"></div>
-      <canvas class="spark" id="spark-eur"></canvas>
-      <div class="ticker-hl" id="t-eur-hl"></div>
     </div>
   </div>
 
@@ -161,21 +148,23 @@ function renderHome(){
 
   <div class="section-title"><h2>📊 ${t("recentSignals")}</h2><div class="line"></div><button class="btn btn-sm" onclick="nav('setup')">${t("history")}</button></div>
   ${historyTable(recent, true)}
-  <div class="note">ℹ️ ${t("demo")}</div>`;
+  <div class="note" data-feed-note>ℹ️ ${t("demo")}</div>`;
 }
 function updateTickers(){
   if (State.page !== "home") return;
-  for (const sym of ["XAUUSD","EURUSD"]){
+  for (const sym of ["XAUUSD"]){
     const M = Market[sym];
     if (!M || !M.last) continue;
     const P = PAIRS[sym];
     const s = M.series[300];
     const closes = s.slice(-56).map(c=>c.c);
     const prev = s[s.length-2] ? s[s.length-2].c : M.last.price;
-    const chg = M.last.price - prev;
-    const pct = chg / prev * 100;
+    let chg = M.last.price - prev;
+    let pct = chg / prev * 100;
+    /* prefer real 24h change when available */
+    if (M.last.pct24 != null && isFinite(M.last.pct24)){ pct = M.last.pct24; chg = M.last.price * (1 - 100/(100+pct)); }
     const dec = P.dec;
-    const id = sym === "XAUUSD" ? "xau" : "eur";
+    const id = "xau";
     const elPrice = document.getElementById("t-" + id + "-price");
     const elChg = document.getElementById("t-" + id + "-chg");
     const elHl = document.getElementById("t-" + id + "-hl");
@@ -196,8 +185,8 @@ function updateTickers(){
 function renderDashboard(){
   const sec = document.getElementById("page-dashboard");
   sec.innerHTML = `
-  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
-    ${Object.keys(PAIRS).map(s => `<button class="tf-chip ${s===State.pair?"active":""}" data-pair="${s}" style="font-size:12.5px;padding:8px 16px">${PAIRS[s].name}</button>`).join("")}
+  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
+    <span class="tf-chip active" style="font-size:12.5px;padding:8px 16px">${PAIRS.XAUUSD.name} — ${t("gold")}</span>
     <div class="top-spacer"></div>
     <button class="btn btn-sm btn-blue" onclick="getAnalysis(true);renderDashboard()">${icon("refresh")}${t("refreshAI")}</button>
   </div>
@@ -205,7 +194,7 @@ function renderDashboard(){
     <div class="card-h">
       <h3>${icon("chart")} ${t("dashTitle")} <span class="badge blue">${PAIRS[State.pair].name}</span> <span class="badge muted">${TFS[State.tf]}</span></h3>
       <div class="spacer"></div>
-      <span class="live-tag"><span class="dot g pulse"></span>${t("live")}</span>
+      <span class="live-tag" data-feed-badge><span class="dot g pulse"></span>${t("live")}</span>
     </div>
     <div class="tf-chips" style="margin-bottom:13px">
       ${Object.keys(TFS).map(tf => `<button class="tf-chip ${tf==String(State.tf)?"active":""}" data-tf="${tf}">${TFS[tf]}</button>`).join("")}
@@ -231,7 +220,6 @@ function renderDashboard(){
     </div>
   </div>`;
   // events
-  sec.querySelectorAll("[data-pair]").forEach(b => b.onclick = () => { State.pair = b.dataset.pair; getAnalysis(true); renderDashboard(); });
   sec.querySelectorAll("[data-tf]").forEach(b => b.onclick = () => { State.tf = parseInt(b.dataset.tf); getAnalysis(true); renderDashboard(); });
   initDashboard();
   updateDashboard();
@@ -578,12 +566,12 @@ function historyTable(rows, mini){
       ${rows.map(h => {
         const d = h.dir;
         return `<tr>
-          <td><b>${P[h.sym].name}</b></td>
+          <td><b>${pairMeta(h.sym).name}</b></td>
           <td>${TFS[h.tf]||h.tf}</td>
           <td>${dirBadge(d, 9)}</td>
-          <td>${fmtNum(h.entry, P[h.sym].dec)}</td>
-          <td style="color:var(--red)">${fmtNum(h.sl, P[h.sym].dec)}</td>
-          <td style="color:var(--green)">${fmtNum(h.tp1, P[h.sym].dec)}</td>
+          <td>${fmtNum(h.entry, pairMeta(h.sym).dec)}</td>
+          <td style="color:var(--red)">${fmtNum(h.sl, pairMeta(h.sym).dec)}</td>
+          <td style="color:var(--green)">${fmtNum(h.tp1, pairMeta(h.sym).dec)}</td>
           <td>${h.conf}%</td>
           <td>${h.result==="win" ? '<span class="badge buy">✅ '+t("win")+'</span>' : h.result==="loss" ? '<span class="badge sell">❌ '+t("loss")+'</span>' : '<span class="badge muted">⏳ '+t("pending")+'</span>'}</td>
           ${mini?"":"<td style='color:var(--muted)'>"+fmtDate(h.time)+" "+fmtTime(h.time)+"</td>"}
@@ -960,6 +948,14 @@ function renderProfile(){
         <button class="btn btn-sm btn-blue" onclick="toggleLang()">${State.lang==="ps" ? "English" : "پښتو"}</button>
       </div>
       <div class="setting-row">
+        <span style="font-size:17px">📡</span>
+        <div class="s-txt"><b>${t("feedSrc")}</b><span>${t("feedSrcSub")} — <span data-feed-inline>${FEED.mode === "live" ? t("feedLive") + " · " + FEED.providerNames() : (FEED.mode === "connecting" ? t("feedConnecting") : t("feedDemo"))}</span></span></div>
+        <span style="display:flex;gap:6px">
+          <button class="btn btn-sm ${FEED.sourcePref!=="demo"?"btn-blue":""}" data-src="auto">${t("dsAuto")}</button>
+          <button class="btn btn-sm ${FEED.sourcePref==="demo"?"btn-blue":""}" data-src="demo">${t("dsDemo")}</button>
+        </span>
+      </div>
+      <div class="setting-row">
         <span style="font-size:17px">${State.theme==="dark"?"🌙":"☀️"}</span>
         <div class="s-txt"><b>${t("sTheme")}</b><span>${t("sThemeSub")}</span></div>
         <button class="btn btn-sm" onclick="toggleTheme()">${State.theme==="dark"?t("lightMode"):t("darkMode")}</button>
@@ -975,6 +971,9 @@ function renderProfile(){
       <p style="font-size:13px;color:var(--muted);line-height:1.75">${t("aboutText")}</p>
     </div>
   </div>`;
+  sec.querySelectorAll("[data-src]").forEach(b => {
+    b.onclick = () => { FEED.setSource(b.dataset.src); renderProfile(); };
+  });
 }
 function resetAll(){
   try { localStorage.clear(); } catch(e){}
