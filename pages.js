@@ -20,7 +20,7 @@ function buildLayout(){
     ${NAV_ITEMS.map(([p,ic,key]) => `<div class="nav-item" data-page="${p}">${icon(ic)}${t(key)}</div>`).join("")}
     <div class="side-foot">
       <div><b>${t("appName")}</b> — ${t("tagline")}</div>
-      <div>${t("version")} 1.1 · ${I18N[getLang()].pro}</div>
+      <div>${t("version")} ${APP_VERSION} · ${I18N[getLang()].pro}</div>
       <span class="ver-badge" data-feed-badge><span class="dot g pulse"></span>${t("live")}</span>
     </div>
   </aside>
@@ -131,6 +131,8 @@ function renderHome(){
         <div class="stat"><div class="k">${t("tp2")}</div><div class="v g">${fmtNum(a.setup.tp2, dec)}</div></div>
         <div class="stat"><div class="k">${t("tp3")}</div><div class="v g">${fmtNum(a.setup.tp3, dec)}</div></div>
         <div class="stat"><div class="k">${t("timeframe")}</div><div class="v">${TFS[State.tf]}</div></div>
+        <div class="stat"><div class="k">${t("entryMethod")}</div><div class="v b">${a.setup.method || "MKT"}</div></div>
+        <div class="stat"><div class="k">${t("atrLabel")}</div><div class="v">${fmtNum(a.setup.atr || 0, dec)}</div></div>
       ` : `<div class="stat" style="grid-column:1/-1"><div class="k">${t("signal")}</div><div class="v y">${t("noSetup")}</div></div>`}
     </div>
     <ul class="reason-list" id="home-reasons">
@@ -168,7 +170,15 @@ function updateTickers(){
     const elPrice = document.getElementById("t-" + id + "-price");
     const elChg = document.getElementById("t-" + id + "-chg");
     const elHl = document.getElementById("t-" + id + "-hl");
-    if (elPrice) elPrice.textContent = fmtNum(M.last.price, dec);
+    if (elPrice){
+      const nextTxt = fmtNum(M.last.price, dec);
+      if (elPrice.textContent && elPrice.textContent !== nextTxt){
+        elPrice.classList.remove("flash-up", "flash-down");
+        void elPrice.offsetWidth;
+        elPrice.classList.add(chg >= 0 ? "flash-up" : "flash-down");
+      }
+      elPrice.textContent = nextTxt;
+    }
     if (elChg){
       elChg.className = "ticker-change " + (chg >= 0 ? "up" : "down");
       elChg.innerHTML = `${chg>=0?icon("up"):icon("down")} ${fmtNum(Math.abs(chg), dec)} (${fmtPct(pct)})`;
@@ -310,6 +320,8 @@ function updateDashboard(){
         <div class="stat"><div class="k">TP2</div><div class="v g">${fmtNum(a.setup.tp2,P.dec)}</div></div>
         <div class="stat"><div class="k">TP3</div><div class="v g">${fmtNum(a.setup.tp3,P.dec)}</div></div>
         <div class="stat"><div class="k">${t("rr")}</div><div class="v">1 : ${((a.setup.tp1-a.setup.entry)/(a.setup.entry-a.setup.sl)).toFixed(1)}</div></div>
+        <div class="stat"><div class="k">${t("entryMethod")}</div><div class="v b">${a.setup.method || "MKT"}</div></div>
+        <div class="stat"><div class="k">${t("atrLabel")}</div><div class="v">${fmtNum(a.setup.atr || 0, P.dec)}</div></div>
       </div>` : `<div class="note" style="margin-top:12px">🟡 ${t("noSetup")}</div>`}`;
   }
   // structure card
@@ -476,6 +488,9 @@ function renderSetup(){
         <div class="stat"><div class="k">${t("tp2")}</div><div class="v g">${fmtNum(a.setup.tp2,P.dec)}</div></div>
         <div class="stat"><div class="k">${t("tp3")}</div><div class="v g">${fmtNum(a.setup.tp3,P.dec)}</div></div>
         <div class="stat"><div class="k">${t("rr")}</div><div class="v">1:${rr1.toFixed(1)} / 1:${rr2.toFixed(1)} / 1:${rr3.toFixed(1)}</div></div>
+        <div class="stat"><div class="k">${t("entryMethod")}</div><div class="v b">${a.setup.method || "MKT"}</div></div>
+        <div class="stat"><div class="k">${t("atrLabel")}</div><div class="v">${fmtNum(a.setup.atr || 0, P.dec)}</div></div>
+        <div class="stat"><div class="k">${t("mt5Lots")}</div><div class="v">${(a.setup.lots != null ? a.setup.lots : mt5Lots(State.riskAmount, mt5Points(a.setup.entry - a.setup.sl))).toFixed(2)}</div></div>
       </div>
       <div class="grid g3" style="margin-top:14px">
         <div class="field"><label>${t("riskAmount")} ($)</label><input class="inp" id="risk-inp" type="number" value="${State.riskAmount}" min="1"></div>
@@ -544,10 +559,11 @@ function updateRR(){
   if (!rr || !a || !a.setup) return;
   const P = PAIRS[a.sym];
   const dist = Math.abs(a.setup.entry - a.setup.sl);
-  const val = State.pair==="XAUUSD" ? 10 : 10; // $ per pip per 1.0 lot; pips = dist/0.1 or dist/0.0001
-  const pipVal = dist / P.pip * 10 * (State.pair==="XAUUSD" ? 1 : 1);
-  const perLot = pipVal;
-  rr.value = `${t("riskMoney")}: ~$${risk} · ${t("rewardMoney")} TP1: ~$${Math.round(risk * ((a.setup.tp1-a.setup.entry)/(a.setup.entry-a.setup.sl)))}`;
+  const pts = mt5Points(dist);
+  const lots = mt5Lots(risk, pts);
+  const lotInp = document.getElementById("lot-inp");
+  if (lotInp) lotInp.value = lots.toFixed(2);
+  rr.value = `${t("mt5Lots")}: ${lots.toFixed(2)} · ${t("riskMoney")}: ~$${risk} · ${t("rewardMoney")} TP1: ~$${Math.round(risk * Math.abs((a.setup.tp1-a.setup.entry)/(a.setup.entry-a.setup.sl)))}`;
 }
 function clearHistory(){
   State.history = [];
@@ -717,6 +733,24 @@ function renderCalc(){
       <div class="kv"><span class="kk">${t("cRR")} 3</span><span class="vv" id="res-rr3">—</span></div>
       <div class="kv"><span class="kk">${t("cPips")} (TP1)</span><span class="vv" id="res-pips">—</span></div>
     </div>
+  </div>
+  <div class="card mt5-card" style="margin-top:16px">
+    <div class="card-h"><h3>${icon("calc")} ${t("mt5Title")}</h3>
+      <div class="spacer"></div>
+      <span class="badge blue">${t("mt5Oz")}</span>
+      <span class="badge green">${t("mt5Point")}</span>
+    </div>
+    <div class="grid g3" style="gap:12px">
+      <div class="field"><label>${t("mt5Risk")}</label><input class="inp" id="mt5-risk" type="number" step="any" value="${State.riskAmount}"></div>
+      <div class="field"><label>${t("cEntry")}</label><input class="inp" id="mt5-entry" type="number" step="any" value="${def?def.entry:P.base}"></div>
+      <div class="field"><label>${t("cSL")}</label><input class="inp" id="mt5-sl" type="number" step="any" value="${def?def.sl:(P.base-10)}"></div>
+    </div>
+    <div class="stat-grid" style="margin-top:14px">
+      <div class="stat"><div class="k">${t("mt5SlPoints")}</div><div class="v" id="mt5-pts">—</div></div>
+      <div class="stat"><div class="k">${t("mt5Lots")}</div><div class="v b" id="mt5-lots">—</div></div>
+      <div class="stat"><div class="k">${t("mt5Result")}</div><div class="v g" id="mt5-out">—</div></div>
+    </div>
+    <div class="note">${t("mt5Note")}</div>
   </div>`;
   const calc = () => {
     const pair = document.getElementById("calc-pair").value;
@@ -737,11 +771,30 @@ function renderCalc(){
     g("res-rr3").textContent = "1 : " + (Math.abs(tp3-e)/slD).toFixed(2);
     g("res-pips").textContent = pips(Math.abs(tp1-e)).toFixed(1);
   };
+  const calcMt5 = () => {
+    const risk = parseFloat(document.getElementById("mt5-risk")?.value) || 100;
+    const e = parseFloat(document.getElementById("mt5-entry")?.value);
+    const sl = parseFloat(document.getElementById("mt5-sl")?.value);
+    const pts = mt5Points(e - sl);
+    const lots = mt5Lots(risk, pts);
+    const elPts = document.getElementById("mt5-pts");
+    const elLots = document.getElementById("mt5-lots");
+    const elOut = document.getElementById("mt5-out");
+    if (elPts) elPts.textContent = pts.toFixed(1);
+    if (elLots) elLots.textContent = lots.toFixed(2);
+    if (elOut) elOut.textContent = lots.toFixed(2) + " " + t("mt5Lots") + " · SL $" + risk.toFixed(0);
+    State.riskAmount = risk;
+  };
   ["calc-pair","calc-entry","calc-sl","calc-tp1","calc-tp2","calc-tp3"].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener("input", calc);
   });
+  ["mt5-risk","mt5-entry","mt5-sl"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("input", calcMt5);
+  });
   calc();
+  calcMt5();
 }
 
 /* ============================================================

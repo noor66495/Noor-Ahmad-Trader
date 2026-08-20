@@ -15,14 +15,84 @@ function rngFor(seed){
 }
 
 /* ---------- Constants ---------- */
+const APP_VERSION = "1.2";
 const PAIRS = {
-  XAUUSD: { name:"XAU/USD", base: 4476.0, vol: 0.0009, pip: 0.10, dec: 2, seed: 101 }
+  XAUUSD: { name:"XAU/USD", base: 4476.0, vol: 0.0009, pip: 0.10, dec: 2, seed: 101, point: 0.01 }
 };
 const TFS = {
-  86400:"1D", 14400:"4H", 10800:"3H", 7200:"2H", 3600:"1H", 1800:"30M", 900:"15M", 300:"5M"
+  86400:"1D", 14400:"4H", 3600:"1H", 900:"15M", 300:"5M"
+};
+/* Per-TF ICT / ATR profile — only the five live timeframes */
+const TF_PROFILES = {
+  86400: { name:"1D",  atrPeriod:14, slAtr:1.8, tp1R:1.5, tp2R:2.5, tp3R:4.0, swingK:3 },
+  14400: { name:"4H",  atrPeriod:14, slAtr:1.6, tp1R:1.4, tp2R:2.3, tp3R:3.6, swingK:2 },
+  3600:  { name:"1H",  atrPeriod:14, slAtr:1.4, tp1R:1.3, tp2R:2.2, tp3R:3.4, swingK:2 },
+  900:   { name:"15M", atrPeriod:14, slAtr:1.2, tp1R:1.2, tp2R:2.0, tp3R:3.0, swingK:2 },
+  300:   { name:"5M",  atrPeriod:14, slAtr:1.0, tp1R:1.1, tp2R:1.8, tp3R:2.8, swingK:2 }
 };
 const fmtNum = (n, dec) => n.toLocaleString("en-US", {minimumFractionDigits:dec, maximumFractionDigits:dec});
 const fmtPct = n => (n>=0?"+":"") + n.toFixed(2) + "%";
+function pairMeta(sym){ return PAIRS[sym] || PAIRS.XAUUSD; }
+
+/* ---------- MT5 gold lots: 1 lot = 100 oz, 1 point ($0.01) = $1 / lot ---------- */
+const MT5 = { ozPerLot: 100, point: 0.01, usdPerPointPerLot: 1 };
+function mt5Points(priceDist){ return Math.abs(priceDist) / MT5.point; }
+function mt5Lots(riskUsd, slPoints){
+  const r = +riskUsd, p = +slPoints;
+  if (!isFinite(r) || !isFinite(p) || p <= 0) return 0;
+  return r / (p * MT5.usdPerPointPerLot);
+}
+function mt5Pnl(lots, points){ return (+lots || 0) * (+points || 0) * MT5.usdPerPointPerLot; }
+
+/* ---------- ATR (Average True Range) ---------- */
+function atr(candles, period){
+  period = period || 14;
+  if (!candles || candles.length < 2) return 0;
+  const n = Math.min(period, candles.length - 1);
+  let sum = 0;
+  for (let i = candles.length - n; i < candles.length; i++){
+    const c = candles[i], p = candles[i - 1] || c;
+    const tr = Math.max(c.h - c.l, Math.abs(c.h - p.c), Math.abs(c.l - p.c));
+    sum += tr;
+  }
+  return sum / n;
+}
+
+/* Precise ICT entry: FVG CE (mid) → Order Block mid → OTE mid → market */
+function pickEntry(dir, price, fvg, obs, ote){
+  if (dir === 1){
+    const bullFvg = (fvg.fvgs || []).find(f => f.dir === 1 && f.status !== "mitigated");
+    if (bullFvg){
+      const ce = (bullFvg.lo + bullFvg.hi) / 2;
+      if (ce <= price * 1.002) return { entry: ce, method: "FVG CE" };
+    }
+    const bullOb = [...(obs || [])].reverse().find(o => o.dir === 1);
+    if (bullOb){
+      const mid = (bullOb.lo + bullOb.hi) / 2;
+      if (mid <= price * 1.002) return { entry: mid, method: "OB" };
+    }
+    if (ote && ote.hi > 0 && ote.dir === 1){
+      const mid = (ote.lo + ote.hi) / 2;
+      if (mid <= price * 1.002) return { entry: mid, method: "OTE" };
+    }
+  } else if (dir === -1){
+    const bearFvg = (fvg.invs || []).find(f => f.dir === -1 && f.status !== "mitigated");
+    if (bearFvg){
+      const ce = (bearFvg.lo + bearFvg.hi) / 2;
+      if (ce >= price * 0.998) return { entry: ce, method: "FVG CE" };
+    }
+    const bearOb = [...(obs || [])].reverse().find(o => o.dir === -1);
+    if (bearOb){
+      const mid = (bearOb.lo + bearOb.hi) / 2;
+      if (mid >= price * 0.998) return { entry: mid, method: "OB" };
+    }
+    if (ote && ote.hi > 0 && ote.dir === -1){
+      const mid = (ote.lo + ote.hi) / 2;
+      if (mid >= price * 0.998) return { entry: mid, method: "OTE" };
+    }
+  }
+  return { entry: price, method: "MKT" };
+}
 
 /* ---------- Candle series generation (historical) ---------- */
 function genSeries(sym, tfSec, count=340){
@@ -218,7 +288,7 @@ function analyzeFVG(candles){
         if (candles[j].l <= lo){ status = "mitigated"; break; }
         if (candles[j].l < hi){ status = "partial"; }
       }
-      fvgs.push({ dir:1, lo, hi, i, status });
+      fvgs.push({ dir:1, lo, hi, i, status, ce: (lo + hi) / 2 });
     }
     if (c.h < a.l){ // bearish FVG
       let status = "open", lo = c.h, hi = a.l;
@@ -226,7 +296,7 @@ function analyzeFVG(candles){
         if (candles[j].h >= hi){ status = "mitigated"; break; }
         if (candles[j].h > lo){ status = "partial"; }
       }
-      invs.push({ dir:-1, lo, hi, i, status });
+      invs.push({ dir:-1, lo, hi, i, status, ce: (lo + hi) / 2 });
     }
   }
   return { fvgs: fvgs.slice(-3), invs: invs.slice(-3) };
@@ -349,7 +419,8 @@ function higherBiases(sym){
 function analyze(sym, tfSec){
   const candles = ensureSeries(sym, tfSec);
   const P = PAIRS[sym];
-  const sw = findSwings(candles);
+  const prof = TF_PROFILES[tfSec] || TF_PROFILES[3600];
+  const sw = findSwings(candles, prof.swingK);
   const structure = analyzeStructure(candles, sw);
   const liq = analyzeLiquidity(candles, sw, sym);
   const fvg = analyzeFVG(candles);
@@ -406,25 +477,32 @@ function analyze(sym, tfSec){
   const conf = Math.round(Math.min(95, Math.max(55, 52 + Math.abs(score)*7.5 + Math.random()*3)));
   if (dir === 0 && reasons.length < 2) push(0, t("rWait"));
 
-  /* ---- Trade setup ---- */
+  /* ---- Trade setup: precise FVG CE / OB / OTE entry + ATR stops ---- */
   let setup = null;
+  const atrVal = atr(candles, prof.atrPeriod);
   if (dir !== 0){
-    const slBuf = price * (sym==="XAUUSD" ? 0.0018 : 0.0012);
-    let entry = price, sl, tps;
+    const picked = pickEntry(dir, price, fvg, obs, ote);
+    let entry = picked.entry, sl, tps;
+    const atrFloor = Math.max(atrVal, price * 0.0006);
     if (dir === 1){
-      const liqBelow = liq.sellBelow ? liq.sellBelow.price : (structure.lastSwingLow || price - slBuf*3);
-      sl = Math.min(liqBelow, price - slBuf) - slBuf*0.4;
+      const liqBelow = liq.sellBelow ? liq.sellBelow.price : (structure.lastSwingLow || entry - atrFloor * 2);
+      sl = Math.min(entry - atrFloor * prof.slAtr, liqBelow - atrFloor * 0.15);
+      if (entry - sl < atrFloor * 0.6) sl = entry - atrFloor * prof.slAtr;
       const r = entry - sl;
-      const t1 = Math.max(entry + r*1.2, liq.buyAbove ? liq.buyAbove.price : entry + r*1.2);
-      tps = [t1, entry + r*2.2, entry + r*3.4];
+      tps = [entry + r * prof.tp1R, entry + r * prof.tp2R, entry + r * prof.tp3R];
     } else {
-      const liqAbove = liq.buyAbove ? liq.buyAbove.price : (structure.lastSwingHigh || price + slBuf*3);
-      sl = Math.max(liqAbove, price + slBuf) + slBuf*0.4;
+      const liqAbove = liq.buyAbove ? liq.buyAbove.price : (structure.lastSwingHigh || entry + atrFloor * 2);
+      sl = Math.max(entry + atrFloor * prof.slAtr, liqAbove + atrFloor * 0.15);
+      if (sl - entry < atrFloor * 0.6) sl = entry + atrFloor * prof.slAtr;
       const r = sl - entry;
-      const t1 = Math.min(entry - r*1.2, liq.sellBelow ? liq.sellBelow.price : entry - r*1.2);
-      tps = [t1, entry - r*2.2, entry - r*3.4];
+      tps = [entry - r * prof.tp1R, entry - r * prof.tp2R, entry - r * prof.tp3R];
     }
-    setup = { dir, entry, sl, tp1: tps[0], tp2: tps[1], tp3: tps[2] };
+    const slPts = mt5Points(entry - sl);
+    setup = {
+      dir, entry, sl, tp1: tps[0], tp2: tps[1], tp3: tps[2],
+      atr: atrVal, method: picked.method, slPoints: slPts,
+      lots: mt5Lots(100, slPts)
+    };
   }
 
   return {
