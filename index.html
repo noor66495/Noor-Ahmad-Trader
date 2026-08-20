@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Noor Ahmad Trader — AI Trading Platform</title>
-<meta name="description" content="Noor Ahmad Trader — AI Trading Platform for XAU/USD (Gold) with ICT analysis & live market data">
+<title>Noor Ahmad Trader — AI Trading Platform v1.2</title>
+<meta name="description" content="Noor Ahmad Trader v1.2 — AI Gold (XAU/USD) platform with ICT analysis, ATR stops, MT5 lots & live market data">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%233b82f6'/%3E%3Cstop offset='1' stop-color='%231d4ed8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect x='2' y='2' width='44' height='44' rx='12' fill='url(%23g)'/%3E%3Cpath d='M13 30 L21 20 L26 25 L34 14' stroke='white' stroke-width='3.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='34' cy='14' r='3.4' fill='%2322c55e'/%3E%3C/svg%3E">
 <meta name="theme-color" content="#070b14">
 <style>
@@ -173,6 +173,11 @@ main{flex:1; min-width:0; display:flex; flex-direction:column;}
 .ticker-price{font-size:27px; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:.3px; margin-top:7px;}
 .ticker-change{font-size:12.5px; font-weight:700; font-variant-numeric:tabular-nums; margin-top:2px;}
 .up{color:var(--green);} .down{color:var(--red);}
+@keyframes flash-up{0%{background:rgba(34,197,94,.42);color:#4ade80;box-shadow:0 0 18px rgba(34,197,94,.35);}100%{background:transparent;box-shadow:none;}}
+@keyframes flash-down{0%{background:rgba(239,68,68,.42);color:#f87171;box-shadow:0 0 18px rgba(239,68,68,.35);}100%{background:transparent;box-shadow:none;}}
+.flash-up{animation:flash-up .75s ease;border-radius:8px;}
+.flash-down{animation:flash-down .75s ease;border-radius:8px;}
+.mt5-card{border-color:rgba(59,130,246,.35);background:linear-gradient(180deg,rgba(37,99,235,.10),var(--card2));}
 .spark{width:100%; height:52px; margin-top:10px; display:block; border-radius:8px; background:rgba(0,0,0,.18);}
 html[data-theme="light"] .spark{background:rgba(16,27,51,.04);}
 .ticker-hl{display:flex; justify-content:space-between; font-size:11.5px; color:var(--muted); margin-top:8px; font-variant-numeric:tabular-nums;}
@@ -415,7 +420,7 @@ const I18N = {
     lastUpd: "Last update", realNote: "Live market data", demoData: "Demo simulator data",
     // nav
     nav_home: "Home", nav_dashboard: "Dashboard", nav_ict: "ICT Analysis",
-    nav_setup: "Trade Setup", nav_timer: "Trade Timer", nav_calc: "Pip Calculator",
+    nav_setup: "Trade Setup", nav_timer: "Trade Timer", nav_calc: "MT5 Lots",
     nav_news: "News", nav_alerts: "Telegram Alerts", nav_chat: "AI Chat", nav_profile: "Profile",
     // common
     buy: "BUY", sell: "SELL", wait: "WAIT",
@@ -446,7 +451,7 @@ const I18N = {
     dashTitle: "Live Chart",
     legend: "Chart legend",
     lgFvg: "FVG", lgOb: "Order Block", lgLiq: "Liquidity", lgOte: "OTE", lgPd: "Premium/Discount", lgSetup: "Setup levels",
-    tf1D: "1D", tf4H: "4H", tf3H: "3H", tf2H: "2H", tf1H: "1H", tf30M: "30M", tf15M: "15M", tf5M: "5M",
+    tf1D: "1D", tf4H: "4H", tf1H: "1H", tf15M: "15M", tf5M: "5M",
     tfAnalysis: "Timeframe Analysis",
     aTrend: "Trend", aBOS: "BOS", aCHoCH: "CHoCH", aFVG: "FVG", aOB: "Order Block", aLiq: "Liquidity",
     aSignal: "Overall Signal",
@@ -486,9 +491,19 @@ const I18N = {
     calcTitle: "Pip Calculator",
     cEntry: "Entry price", cSL: "Stop loss", cTP: "Take profit prices",
     cSLDist: "SL distance", cTPDist: "TP distance", cRR: "Risk : Reward",
-    cPips: "Target pips", cNote: "Pip size: XAU/USD 1 pip = 0.10 ($1 per 0.01 per 0.01 lot)",
+    cPips: "Target pips", cNote: "Pip size: XAU/USD 1 pip = 0.10 · MT5: 1 lot = 100 oz, 1 point = $1",
     cSld: "Stop Loss distance",
     pips: "pips",
+    mt5Title: "MT5 Lot Calculator",
+    mt5Lots: "Lots",
+    mt5Oz: "1 lot = 100 ounces",
+    mt5Point: "1 point = $1 per lot",
+    mt5Risk: "Risk ($)",
+    mt5SlPoints: "SL (points)",
+    mt5Result: "Position size",
+    mt5Note: "XAU/USD on MT5: 1.00 lot = 100 oz. A 1-point ($0.01) move = $1 per lot. Lots = Risk ÷ SL points.",
+    entryMethod: "Entry method",
+    atrLabel: "ATR",
     // news
     newsTitle: "News & Economic Calendar",
     nextEvents: "Next High-Impact Events",
@@ -590,7 +605,7 @@ const I18N = {
     lastUpd: "وروستنی تازه والی", realNote: "ژوندۍ بازاري ډاټا", demoData: "د نمونې انجن ډاټا",
     // nav
     nav_home: "کور", nav_dashboard: "ډشبورډ", nav_ict: "د ICT شننه",
-    nav_setup: "د ټریډ طرحه", nav_timer: "د ټریډ وخت", nav_calc: "د پایپ حسابګر",
+    nav_setup: "د ټریډ طرحه", nav_timer: "د ټریډ وخت", nav_calc: "MT5 لاټ",
     nav_news: "خبرونه", nav_alerts: "د ټیلیګرام خبرتیاوې", nav_chat: "د AI خبرې", nav_profile: "پروفایل",
     // common
     buy: "پیرود", sell: "پلور", wait: "انتظار",
@@ -621,7 +636,7 @@ const I18N = {
     dashTitle: "ژوندی چارټ",
     legend: "د چارټ نښې",
     lgFvg: "FVG", lgOb: "اردر بلاک", lgLiq: "لیکویډیټي", lgOte: "OTE", lgPd: "پریمیم/ډیسکاونټ", lgSetup: "د طرحې کچې",
-    tf1D: "۱D", tf4H: "۴H", tf3H: "۳H", tf2H: "۲H", tf1H: "۱H", tf30M: "۳۰M", tf15M: "۱۵M", tf5M: "۵M",
+    tf1D: "۱D", tf4H: "۴H", tf1H: "۱H", tf15M: "۱۵M", tf5M: "۵M",
     tfAnalysis: "د ټایم فریم شننه",
     aTrend: "رجحان", aBOS: "BOS", aCHoCH: "CHoCH", aFVG: "FVG", aOB: "اردر بلاک", aLiq: "لیکویډیټي",
     aSignal: "ټولیز سیګنال",
@@ -661,9 +676,19 @@ const I18N = {
     calcTitle: "د پایپ حسابګر",
     cEntry: "د ننوتو بیه", cSL: "د تاوان بند", cTP: "د ګټې موخې (TP)",
     cSLDist: "د SL واټن", cTPDist: "د TP واټن", cRR: "خطر : ګټه",
-    cPips: "د پایپ موخه", cNote: "د پایپ اندازه: XAU/USD ۱ پایپ = ۰.۱۰",
+    cPips: "د پایپ موخه", cNote: "پایپ: XAU/USD ۱ پایپ = ۰.۱۰ · MT5: ۱ لاټ = ۱۰۰ اونس، ۱ نقطه = $۱",
     cSld: "د تاوان بند واټن",
     pips: "پایپونه",
+    mt5Title: "د MT5 لاټ حسابګر",
+    mt5Lots: "لاټونه",
+    mt5Oz: "۱ لاټ = ۱۰۰ اونس",
+    mt5Point: "۱ نقطه = $۱ په هر لاټ",
+    mt5Risk: "خطر ($)",
+    mt5SlPoints: "SL (نقطې)",
+    mt5Result: "د پوزیشن اندازه",
+    mt5Note: "په MT5 کې XAU/USD: ۱.۰۰ لاټ = ۱۰۰ اونس. د ۱ نقطې ($0.01) حرکت = په هر لاټ $۱. لاټونه = خطر ÷ د SL نقطې.",
+    entryMethod: "د انټري طریقه",
+    atrLabel: "ATR",
     // news
     newsTitle: "خبرونه او اقتصادي کالندر",
     nextEvents: "راتلونکي لوړ اغېز لرونکي خبرونه",
@@ -780,14 +805,84 @@ function rngFor(seed){
 }
 
 /* ---------- Constants ---------- */
+const APP_VERSION = "1.2";
 const PAIRS = {
-  XAUUSD: { name:"XAU/USD", base: 4476.0, vol: 0.0009, pip: 0.10, dec: 2, seed: 101 }
+  XAUUSD: { name:"XAU/USD", base: 4476.0, vol: 0.0009, pip: 0.10, dec: 2, seed: 101, point: 0.01 }
 };
 const TFS = {
-  86400:"1D", 14400:"4H", 10800:"3H", 7200:"2H", 3600:"1H", 1800:"30M", 900:"15M", 300:"5M"
+  86400:"1D", 14400:"4H", 3600:"1H", 900:"15M", 300:"5M"
+};
+/* Per-TF ICT / ATR profile — only the five live timeframes */
+const TF_PROFILES = {
+  86400: { name:"1D",  atrPeriod:14, slAtr:1.8, tp1R:1.5, tp2R:2.5, tp3R:4.0, swingK:3 },
+  14400: { name:"4H",  atrPeriod:14, slAtr:1.6, tp1R:1.4, tp2R:2.3, tp3R:3.6, swingK:2 },
+  3600:  { name:"1H",  atrPeriod:14, slAtr:1.4, tp1R:1.3, tp2R:2.2, tp3R:3.4, swingK:2 },
+  900:   { name:"15M", atrPeriod:14, slAtr:1.2, tp1R:1.2, tp2R:2.0, tp3R:3.0, swingK:2 },
+  300:   { name:"5M",  atrPeriod:14, slAtr:1.0, tp1R:1.1, tp2R:1.8, tp3R:2.8, swingK:2 }
 };
 const fmtNum = (n, dec) => n.toLocaleString("en-US", {minimumFractionDigits:dec, maximumFractionDigits:dec});
 const fmtPct = n => (n>=0?"+":"") + n.toFixed(2) + "%";
+function pairMeta(sym){ return PAIRS[sym] || PAIRS.XAUUSD; }
+
+/* ---------- MT5 gold lots: 1 lot = 100 oz, 1 point ($0.01) = $1 / lot ---------- */
+const MT5 = { ozPerLot: 100, point: 0.01, usdPerPointPerLot: 1 };
+function mt5Points(priceDist){ return Math.abs(priceDist) / MT5.point; }
+function mt5Lots(riskUsd, slPoints){
+  const r = +riskUsd, p = +slPoints;
+  if (!isFinite(r) || !isFinite(p) || p <= 0) return 0;
+  return r / (p * MT5.usdPerPointPerLot);
+}
+function mt5Pnl(lots, points){ return (+lots || 0) * (+points || 0) * MT5.usdPerPointPerLot; }
+
+/* ---------- ATR (Average True Range) ---------- */
+function atr(candles, period){
+  period = period || 14;
+  if (!candles || candles.length < 2) return 0;
+  const n = Math.min(period, candles.length - 1);
+  let sum = 0;
+  for (let i = candles.length - n; i < candles.length; i++){
+    const c = candles[i], p = candles[i - 1] || c;
+    const tr = Math.max(c.h - c.l, Math.abs(c.h - p.c), Math.abs(c.l - p.c));
+    sum += tr;
+  }
+  return sum / n;
+}
+
+/* Precise ICT entry: FVG CE (mid) → Order Block mid → OTE mid → market */
+function pickEntry(dir, price, fvg, obs, ote){
+  if (dir === 1){
+    const bullFvg = (fvg.fvgs || []).find(f => f.dir === 1 && f.status !== "mitigated");
+    if (bullFvg){
+      const ce = (bullFvg.lo + bullFvg.hi) / 2;
+      if (ce <= price * 1.002) return { entry: ce, method: "FVG CE" };
+    }
+    const bullOb = [...(obs || [])].reverse().find(o => o.dir === 1);
+    if (bullOb){
+      const mid = (bullOb.lo + bullOb.hi) / 2;
+      if (mid <= price * 1.002) return { entry: mid, method: "OB" };
+    }
+    if (ote && ote.hi > 0 && ote.dir === 1){
+      const mid = (ote.lo + ote.hi) / 2;
+      if (mid <= price * 1.002) return { entry: mid, method: "OTE" };
+    }
+  } else if (dir === -1){
+    const bearFvg = (fvg.invs || []).find(f => f.dir === -1 && f.status !== "mitigated");
+    if (bearFvg){
+      const ce = (bearFvg.lo + bearFvg.hi) / 2;
+      if (ce >= price * 0.998) return { entry: ce, method: "FVG CE" };
+    }
+    const bearOb = [...(obs || [])].reverse().find(o => o.dir === -1);
+    if (bearOb){
+      const mid = (bearOb.lo + bearOb.hi) / 2;
+      if (mid >= price * 0.998) return { entry: mid, method: "OB" };
+    }
+    if (ote && ote.hi > 0 && ote.dir === -1){
+      const mid = (ote.lo + ote.hi) / 2;
+      if (mid >= price * 0.998) return { entry: mid, method: "OTE" };
+    }
+  }
+  return { entry: price, method: "MKT" };
+}
 
 /* ---------- Candle series generation (historical) ---------- */
 function genSeries(sym, tfSec, count=340){
@@ -983,7 +1078,7 @@ function analyzeFVG(candles){
         if (candles[j].l <= lo){ status = "mitigated"; break; }
         if (candles[j].l < hi){ status = "partial"; }
       }
-      fvgs.push({ dir:1, lo, hi, i, status });
+      fvgs.push({ dir:1, lo, hi, i, status, ce: (lo + hi) / 2 });
     }
     if (c.h < a.l){ // bearish FVG
       let status = "open", lo = c.h, hi = a.l;
@@ -991,7 +1086,7 @@ function analyzeFVG(candles){
         if (candles[j].h >= hi){ status = "mitigated"; break; }
         if (candles[j].h > lo){ status = "partial"; }
       }
-      invs.push({ dir:-1, lo, hi, i, status });
+      invs.push({ dir:-1, lo, hi, i, status, ce: (lo + hi) / 2 });
     }
   }
   return { fvgs: fvgs.slice(-3), invs: invs.slice(-3) };
@@ -1114,7 +1209,8 @@ function higherBiases(sym){
 function analyze(sym, tfSec){
   const candles = ensureSeries(sym, tfSec);
   const P = PAIRS[sym];
-  const sw = findSwings(candles);
+  const prof = TF_PROFILES[tfSec] || TF_PROFILES[3600];
+  const sw = findSwings(candles, prof.swingK);
   const structure = analyzeStructure(candles, sw);
   const liq = analyzeLiquidity(candles, sw, sym);
   const fvg = analyzeFVG(candles);
@@ -1171,25 +1267,32 @@ function analyze(sym, tfSec){
   const conf = Math.round(Math.min(95, Math.max(55, 52 + Math.abs(score)*7.5 + Math.random()*3)));
   if (dir === 0 && reasons.length < 2) push(0, t("rWait"));
 
-  /* ---- Trade setup ---- */
+  /* ---- Trade setup: precise FVG CE / OB / OTE entry + ATR stops ---- */
   let setup = null;
+  const atrVal = atr(candles, prof.atrPeriod);
   if (dir !== 0){
-    const slBuf = price * (sym==="XAUUSD" ? 0.0018 : 0.0012);
-    let entry = price, sl, tps;
+    const picked = pickEntry(dir, price, fvg, obs, ote);
+    let entry = picked.entry, sl, tps;
+    const atrFloor = Math.max(atrVal, price * 0.0006);
     if (dir === 1){
-      const liqBelow = liq.sellBelow ? liq.sellBelow.price : (structure.lastSwingLow || price - slBuf*3);
-      sl = Math.min(liqBelow, price - slBuf) - slBuf*0.4;
+      const liqBelow = liq.sellBelow ? liq.sellBelow.price : (structure.lastSwingLow || entry - atrFloor * 2);
+      sl = Math.min(entry - atrFloor * prof.slAtr, liqBelow - atrFloor * 0.15);
+      if (entry - sl < atrFloor * 0.6) sl = entry - atrFloor * prof.slAtr;
       const r = entry - sl;
-      const t1 = Math.max(entry + r*1.2, liq.buyAbove ? liq.buyAbove.price : entry + r*1.2);
-      tps = [t1, entry + r*2.2, entry + r*3.4];
+      tps = [entry + r * prof.tp1R, entry + r * prof.tp2R, entry + r * prof.tp3R];
     } else {
-      const liqAbove = liq.buyAbove ? liq.buyAbove.price : (structure.lastSwingHigh || price + slBuf*3);
-      sl = Math.max(liqAbove, price + slBuf) + slBuf*0.4;
+      const liqAbove = liq.buyAbove ? liq.buyAbove.price : (structure.lastSwingHigh || entry + atrFloor * 2);
+      sl = Math.max(entry + atrFloor * prof.slAtr, liqAbove + atrFloor * 0.15);
+      if (sl - entry < atrFloor * 0.6) sl = entry + atrFloor * prof.slAtr;
       const r = sl - entry;
-      const t1 = Math.min(entry - r*1.2, liq.sellBelow ? liq.sellBelow.price : entry - r*1.2);
-      tps = [t1, entry - r*2.2, entry - r*3.4];
+      tps = [entry - r * prof.tp1R, entry - r * prof.tp2R, entry - r * prof.tp3R];
     }
-    setup = { dir, entry, sl, tp1: tps[0], tp2: tps[1], tp3: tps[2] };
+    const slPts = mt5Points(entry - sl);
+    setup = {
+      dir, entry, sl, tp1: tps[0], tp2: tps[1], tp3: tps[2],
+      atr: atrVal, method: picked.method, slPoints: slPts,
+      lots: mt5Lots(100, slPts)
+    };
   }
 
   return {
@@ -1275,7 +1378,7 @@ function ffetch(url, ms){
 }
 
 /* ---------- candle helpers ---------- */
-const CANDLE_MS = { 300:"5m", 900:"15m", 1800:"30m", 3600:"1H", 7200:"2H", 10800:"3H", 14400:"4H", 86400:"1D" };
+const CANDLE_MS = { 300:"5m", 900:"15m", 3600:"1H", 14400:"4H", 86400:"1D" };
 function sanitizeCandles(arr){ // oldest-first [{t,o,h,l,c,v}]
   const out = [];
   for (const c of arr){
@@ -1316,10 +1419,10 @@ const FEED_PROVIDERS = {
   /* ---- Kraken (PAXG gold vs USD; 720 candles max) ---- */
   kraken: {
     id: "kraken", name: "Kraken",
-    _iv: { 300:5, 900:15, 1800:30, 3600:60, 14400:240, 86400:1440 },
+    _iv: { 300:5, 900:15, 3600:60, 14400:240, 86400:1440 },
     async candles(symbol, tfSec, count){
-      const agg = (tfSec === 7200 || tfSec === 10800);
-      const iv = agg ? 60 : this._iv[tfSec];
+      const agg = false;
+      const iv = this._iv[tfSec];
       if (!iv) throw new Error("tf unsupported");
       const j = await ffetch(`https://api.kraken.com/0/public/OHLC?pair=${encodeURIComponent(symbol)}&interval=${iv}`, 9000);
       if (!j || !j.result || (j.error && j.error.length)) throw new Error(j && j.error && j.error[0] || "kraken empty");
@@ -1345,10 +1448,10 @@ const FEED_PROVIDERS = {
   binance: {
     id: "binance", name: "Binance",
     _hosts: ["https://data-api.binance.vision", "https://api.binance.com"],
-    _iv: { 300:"5m", 900:"15m", 1800:"30m", 3600:"1h", 7200:"2h", 14400:"4h", 86400:"1d" },
+    _iv: { 300:"5m", 900:"15m", 3600:"1h", 14400:"4h", 86400:"1d" },
     async candles(symbol, tfSec, count){
-      const agg = tfSec === 10800;
-      const iv = agg ? "1h" : this._iv[tfSec];
+      const agg = false;
+      const iv = this._iv[tfSec];
       if (!iv) throw new Error("tf unsupported");
       const lim = Math.min(agg ? count*3 : count, 1000);
       let lastErr = null;
@@ -1382,10 +1485,10 @@ const FEED_PROVIDERS = {
   /* ---- OKX (XAUT-USDT gold) ---- */
   okx: {
     id: "okx", name: "OKX",
-    _iv: { 300:"5m", 900:"15m", 1800:"30m", 3600:"1H", 7200:"2H", 14400:"4H", 86400:"1D" },
+    _iv: { 300:"5m", 900:"15m", 3600:"1H", 14400:"4H", 86400:"1D" },
     async candles(symbol, tfSec, count){
-      const agg = tfSec === 10800;
-      const bar = agg ? "1H" : this._iv[tfSec];
+      const agg = false;
+      const bar = this._iv[tfSec];
       if (!bar) throw new Error("tf unsupported");
       const lim = Math.min(agg ? 300 : count, 300);
       const j = await ffetch(`https://www.okx.com/api/v5/market/candles?instId=${symbol}&bar=${bar}&limit=${lim}`, 8000);
@@ -1406,10 +1509,10 @@ const FEED_PROVIDERS = {
   /* ---- KuCoin (XAUT-USDT gold) ---- */
   kucoin: {
     id: "kucoin", name: "KuCoin",
-    _iv: { 300:"5min", 900:"15min", 1800:"30min", 3600:"1hour", 7200:"2hour", 14400:"4hour", 86400:"1day" },
+    _iv: { 300:"5min", 900:"15min", 3600:"1hour", 14400:"4hour", 86400:"1day" },
     async candles(symbol, tfSec, count){
-      const agg = tfSec === 10800;
-      const type = agg ? "1hour" : this._iv[tfSec];
+      const agg = false;
+      const type = this._iv[tfSec];
       if (!type) throw new Error("tf unsupported");
       const lim = Math.min(agg ? count*3 : count, 1500);
       const j = await ffetch(`https://api.kucoin.com/api/v1/market/candles?symbol=${symbol}&type=${type}&limit=${lim}`, 8000);
@@ -1431,10 +1534,10 @@ const FEED_PROVIDERS = {
   /* ---- Bybit (XAUT/PAXG + EUR USDT) ---- */
   bybit: {
     id: "bybit", name: "Bybit",
-    _iv: { 300:"5", 900:"15", 1800:"30", 3600:"60", 7200:"120", 14400:"240", 86400:"D" },
+    _iv: { 300:"5", 900:"15", 3600:"60", 14400:"240", 86400:"D" },
     async candles(symbol, tfSec, count){
-      const agg = tfSec === 10800;
-      const iv = agg ? "60" : this._iv[tfSec];
+      const agg = false;
+      const iv = this._iv[tfSec];
       if (!iv) throw new Error("tf unsupported");
       const lim = Math.min(agg ? count*3 : count, 1000);
       const j = await ffetch(`https://api.bybit.com/v5/market/kline?category=spot&symbol=${symbol}&interval=${iv}&limit=${lim}`, 8000);
@@ -1456,10 +1559,10 @@ const FEED_PROVIDERS = {
   /* ---- Bitfinex (last resort) ---- */
   bitfinex: {
     id: "bitfinex", name: "Bitfinex",
-    _iv: { 300:"5m", 900:"15m", 1800:"30m", 3600:"1h", 7200:"2h", 14400:"4h", 86400:"1D" },
+    _iv: { 300:"5m", 900:"15m", 3600:"1h", 14400:"4h", 86400:"1D" },
     async candles(symbol, tfSec, count){
-      const agg = tfSec === 10800;
-      const tf = agg ? "1h" : this._iv[tfSec];
+      const agg = false;
+      const tf = this._iv[tfSec];
       if (!tf) throw new Error("tf unsupported");
       const lim = Math.min(agg ? count*3 : count, 1000);
       const j = await ffetch(`https://api-pub.bitfinex.com/v2/candles/t${symbol}:${tf}/hist?limit=${lim}`, 8000);
@@ -1486,7 +1589,7 @@ const FEED_CHAINS = {
     ["kucoin",  ["XAUT-USDT"]],
     ["binance", ["XAUTUSDT", "PAXGUSDT"]],
     ["bybit",   ["XAUTUSDT", "PAXGUSDT"]],
-    ["bitfinex",["tXAUT:USD"]]
+    ["bitfinex",["XAUT:USD"]]
   ]
 };
 
@@ -2195,7 +2298,7 @@ function addFeed(type, msg){
 /* ---------- Simulated periodic alerts ---------- */
 const FEED_MSGS = {
   buy:  ["XAU/USD — BUY signal on 1H, confidence 84%", "XAU/USD — BUY on 4H, FVG support holding, confidence 79%"],
-  sell: ["XAU/USD — SELL signal on 30M, confidence 78%", "XAU/USD — SELL on 1H, liquidity sweep above equal highs"],
+  sell: ["XAU/USD — SELL signal on 15M, confidence 78%", "XAU/USD — SELL on 1H, liquidity sweep above equal highs"],
   wait: ["XAU/USD — WAIT: no confluence yet, watch London open", "XAU/USD — WAIT: price in OTE, await confirmation"],
   news: ["CPI release in 3h — high volatility expected on gold", "NFP tomorrow 13:30 ET — avoid new trades before news"],
   kz:   ["London Kill Zone opens in 25 min — prepare", "NY AM Kill Zone active — watch for liquidity sweeps"]
@@ -2317,7 +2420,7 @@ function buildLayout(){
     ${NAV_ITEMS.map(([p,ic,key]) => `<div class="nav-item" data-page="${p}">${icon(ic)}${t(key)}</div>`).join("")}
     <div class="side-foot">
       <div><b>${t("appName")}</b> — ${t("tagline")}</div>
-      <div>${t("version")} 1.1 · ${I18N[getLang()].pro}</div>
+      <div>${t("version")} ${APP_VERSION} · ${I18N[getLang()].pro}</div>
       <span class="ver-badge" data-feed-badge><span class="dot g pulse"></span>${t("live")}</span>
     </div>
   </aside>
@@ -2428,6 +2531,8 @@ function renderHome(){
         <div class="stat"><div class="k">${t("tp2")}</div><div class="v g">${fmtNum(a.setup.tp2, dec)}</div></div>
         <div class="stat"><div class="k">${t("tp3")}</div><div class="v g">${fmtNum(a.setup.tp3, dec)}</div></div>
         <div class="stat"><div class="k">${t("timeframe")}</div><div class="v">${TFS[State.tf]}</div></div>
+        <div class="stat"><div class="k">${t("entryMethod")}</div><div class="v b">${a.setup.method || "MKT"}</div></div>
+        <div class="stat"><div class="k">${t("atrLabel")}</div><div class="v">${fmtNum(a.setup.atr || 0, dec)}</div></div>
       ` : `<div class="stat" style="grid-column:1/-1"><div class="k">${t("signal")}</div><div class="v y">${t("noSetup")}</div></div>`}
     </div>
     <ul class="reason-list" id="home-reasons">
@@ -2465,7 +2570,15 @@ function updateTickers(){
     const elPrice = document.getElementById("t-" + id + "-price");
     const elChg = document.getElementById("t-" + id + "-chg");
     const elHl = document.getElementById("t-" + id + "-hl");
-    if (elPrice) elPrice.textContent = fmtNum(M.last.price, dec);
+    if (elPrice){
+      const nextTxt = fmtNum(M.last.price, dec);
+      if (elPrice.textContent && elPrice.textContent !== nextTxt){
+        elPrice.classList.remove("flash-up", "flash-down");
+        void elPrice.offsetWidth;
+        elPrice.classList.add(chg >= 0 ? "flash-up" : "flash-down");
+      }
+      elPrice.textContent = nextTxt;
+    }
     if (elChg){
       elChg.className = "ticker-change " + (chg >= 0 ? "up" : "down");
       elChg.innerHTML = `${chg>=0?icon("up"):icon("down")} ${fmtNum(Math.abs(chg), dec)} (${fmtPct(pct)})`;
@@ -2607,6 +2720,8 @@ function updateDashboard(){
         <div class="stat"><div class="k">TP2</div><div class="v g">${fmtNum(a.setup.tp2,P.dec)}</div></div>
         <div class="stat"><div class="k">TP3</div><div class="v g">${fmtNum(a.setup.tp3,P.dec)}</div></div>
         <div class="stat"><div class="k">${t("rr")}</div><div class="v">1 : ${((a.setup.tp1-a.setup.entry)/(a.setup.entry-a.setup.sl)).toFixed(1)}</div></div>
+        <div class="stat"><div class="k">${t("entryMethod")}</div><div class="v b">${a.setup.method || "MKT"}</div></div>
+        <div class="stat"><div class="k">${t("atrLabel")}</div><div class="v">${fmtNum(a.setup.atr || 0, P.dec)}</div></div>
       </div>` : `<div class="note" style="margin-top:12px">🟡 ${t("noSetup")}</div>`}`;
   }
   // structure card
@@ -2773,6 +2888,9 @@ function renderSetup(){
         <div class="stat"><div class="k">${t("tp2")}</div><div class="v g">${fmtNum(a.setup.tp2,P.dec)}</div></div>
         <div class="stat"><div class="k">${t("tp3")}</div><div class="v g">${fmtNum(a.setup.tp3,P.dec)}</div></div>
         <div class="stat"><div class="k">${t("rr")}</div><div class="v">1:${rr1.toFixed(1)} / 1:${rr2.toFixed(1)} / 1:${rr3.toFixed(1)}</div></div>
+        <div class="stat"><div class="k">${t("entryMethod")}</div><div class="v b">${a.setup.method || "MKT"}</div></div>
+        <div class="stat"><div class="k">${t("atrLabel")}</div><div class="v">${fmtNum(a.setup.atr || 0, P.dec)}</div></div>
+        <div class="stat"><div class="k">${t("mt5Lots")}</div><div class="v">${(a.setup.lots != null ? a.setup.lots : mt5Lots(State.riskAmount, mt5Points(a.setup.entry - a.setup.sl))).toFixed(2)}</div></div>
       </div>
       <div class="grid g3" style="margin-top:14px">
         <div class="field"><label>${t("riskAmount")} ($)</label><input class="inp" id="risk-inp" type="number" value="${State.riskAmount}" min="1"></div>
@@ -2841,10 +2959,11 @@ function updateRR(){
   if (!rr || !a || !a.setup) return;
   const P = PAIRS[a.sym];
   const dist = Math.abs(a.setup.entry - a.setup.sl);
-  const val = State.pair==="XAUUSD" ? 10 : 10; // $ per pip per 1.0 lot; pips = dist/0.1 or dist/0.0001
-  const pipVal = dist / P.pip * 10 * (State.pair==="XAUUSD" ? 1 : 1);
-  const perLot = pipVal;
-  rr.value = `${t("riskMoney")}: ~$${risk} · ${t("rewardMoney")} TP1: ~$${Math.round(risk * ((a.setup.tp1-a.setup.entry)/(a.setup.entry-a.setup.sl)))}`;
+  const pts = mt5Points(dist);
+  const lots = mt5Lots(risk, pts);
+  const lotInp = document.getElementById("lot-inp");
+  if (lotInp) lotInp.value = lots.toFixed(2);
+  rr.value = `${t("mt5Lots")}: ${lots.toFixed(2)} · ${t("riskMoney")}: ~$${risk} · ${t("rewardMoney")} TP1: ~$${Math.round(risk * Math.abs((a.setup.tp1-a.setup.entry)/(a.setup.entry-a.setup.sl)))}`;
 }
 function clearHistory(){
   State.history = [];
@@ -3014,6 +3133,24 @@ function renderCalc(){
       <div class="kv"><span class="kk">${t("cRR")} 3</span><span class="vv" id="res-rr3">—</span></div>
       <div class="kv"><span class="kk">${t("cPips")} (TP1)</span><span class="vv" id="res-pips">—</span></div>
     </div>
+  </div>
+  <div class="card mt5-card" style="margin-top:16px">
+    <div class="card-h"><h3>${icon("calc")} ${t("mt5Title")}</h3>
+      <div class="spacer"></div>
+      <span class="badge blue">${t("mt5Oz")}</span>
+      <span class="badge green">${t("mt5Point")}</span>
+    </div>
+    <div class="grid g3" style="gap:12px">
+      <div class="field"><label>${t("mt5Risk")}</label><input class="inp" id="mt5-risk" type="number" step="any" value="${State.riskAmount}"></div>
+      <div class="field"><label>${t("cEntry")}</label><input class="inp" id="mt5-entry" type="number" step="any" value="${def?def.entry:P.base}"></div>
+      <div class="field"><label>${t("cSL")}</label><input class="inp" id="mt5-sl" type="number" step="any" value="${def?def.sl:(P.base-10)}"></div>
+    </div>
+    <div class="stat-grid" style="margin-top:14px">
+      <div class="stat"><div class="k">${t("mt5SlPoints")}</div><div class="v" id="mt5-pts">—</div></div>
+      <div class="stat"><div class="k">${t("mt5Lots")}</div><div class="v b" id="mt5-lots">—</div></div>
+      <div class="stat"><div class="k">${t("mt5Result")}</div><div class="v g" id="mt5-out">—</div></div>
+    </div>
+    <div class="note">${t("mt5Note")}</div>
   </div>`;
   const calc = () => {
     const pair = document.getElementById("calc-pair").value;
@@ -3034,11 +3171,30 @@ function renderCalc(){
     g("res-rr3").textContent = "1 : " + (Math.abs(tp3-e)/slD).toFixed(2);
     g("res-pips").textContent = pips(Math.abs(tp1-e)).toFixed(1);
   };
+  const calcMt5 = () => {
+    const risk = parseFloat(document.getElementById("mt5-risk")?.value) || 100;
+    const e = parseFloat(document.getElementById("mt5-entry")?.value);
+    const sl = parseFloat(document.getElementById("mt5-sl")?.value);
+    const pts = mt5Points(e - sl);
+    const lots = mt5Lots(risk, pts);
+    const elPts = document.getElementById("mt5-pts");
+    const elLots = document.getElementById("mt5-lots");
+    const elOut = document.getElementById("mt5-out");
+    if (elPts) elPts.textContent = pts.toFixed(1);
+    if (elLots) elLots.textContent = lots.toFixed(2);
+    if (elOut) elOut.textContent = lots.toFixed(2) + " " + t("mt5Lots") + " · SL $" + risk.toFixed(0);
+    State.riskAmount = risk;
+  };
   ["calc-pair","calc-entry","calc-sl","calc-tp1","calc-tp2","calc-tp3"].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener("input", calc);
   });
+  ["mt5-risk","mt5-entry","mt5-sl"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("input", calcMt5);
+  });
   calc();
+  calcMt5();
 }
 
 /* ============================================================

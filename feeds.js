@@ -22,7 +22,7 @@ function ffetch(url, ms){
 }
 
 /* ---------- candle helpers ---------- */
-const CANDLE_MS = { 300:"5m", 900:"15m", 1800:"30m", 3600:"1H", 7200:"2H", 10800:"3H", 14400:"4H", 86400:"1D" };
+const CANDLE_MS = { 300:"5m", 900:"15m", 3600:"1H", 14400:"4H", 86400:"1D" };
 function sanitizeCandles(arr){ // oldest-first [{t,o,h,l,c,v}]
   const out = [];
   for (const c of arr){
@@ -63,10 +63,10 @@ const FEED_PROVIDERS = {
   /* ---- Kraken (PAXG gold vs USD; 720 candles max) ---- */
   kraken: {
     id: "kraken", name: "Kraken",
-    _iv: { 300:5, 900:15, 1800:30, 3600:60, 14400:240, 86400:1440 },
+    _iv: { 300:5, 900:15, 3600:60, 14400:240, 86400:1440 },
     async candles(symbol, tfSec, count){
-      const agg = (tfSec === 7200 || tfSec === 10800);
-      const iv = agg ? 60 : this._iv[tfSec];
+      const agg = false;
+      const iv = this._iv[tfSec];
       if (!iv) throw new Error("tf unsupported");
       const j = await ffetch(`https://api.kraken.com/0/public/OHLC?pair=${encodeURIComponent(symbol)}&interval=${iv}`, 9000);
       if (!j || !j.result || (j.error && j.error.length)) throw new Error(j && j.error && j.error[0] || "kraken empty");
@@ -92,10 +92,10 @@ const FEED_PROVIDERS = {
   binance: {
     id: "binance", name: "Binance",
     _hosts: ["https://data-api.binance.vision", "https://api.binance.com"],
-    _iv: { 300:"5m", 900:"15m", 1800:"30m", 3600:"1h", 7200:"2h", 14400:"4h", 86400:"1d" },
+    _iv: { 300:"5m", 900:"15m", 3600:"1h", 14400:"4h", 86400:"1d" },
     async candles(symbol, tfSec, count){
-      const agg = tfSec === 10800;
-      const iv = agg ? "1h" : this._iv[tfSec];
+      const agg = false;
+      const iv = this._iv[tfSec];
       if (!iv) throw new Error("tf unsupported");
       const lim = Math.min(agg ? count*3 : count, 1000);
       let lastErr = null;
@@ -129,10 +129,10 @@ const FEED_PROVIDERS = {
   /* ---- OKX (XAUT-USDT gold) ---- */
   okx: {
     id: "okx", name: "OKX",
-    _iv: { 300:"5m", 900:"15m", 1800:"30m", 3600:"1H", 7200:"2H", 14400:"4H", 86400:"1D" },
+    _iv: { 300:"5m", 900:"15m", 3600:"1H", 14400:"4H", 86400:"1D" },
     async candles(symbol, tfSec, count){
-      const agg = tfSec === 10800;
-      const bar = agg ? "1H" : this._iv[tfSec];
+      const agg = false;
+      const bar = this._iv[tfSec];
       if (!bar) throw new Error("tf unsupported");
       const lim = Math.min(agg ? 300 : count, 300);
       const j = await ffetch(`https://www.okx.com/api/v5/market/candles?instId=${symbol}&bar=${bar}&limit=${lim}`, 8000);
@@ -153,10 +153,10 @@ const FEED_PROVIDERS = {
   /* ---- KuCoin (XAUT-USDT gold) ---- */
   kucoin: {
     id: "kucoin", name: "KuCoin",
-    _iv: { 300:"5min", 900:"15min", 1800:"30min", 3600:"1hour", 7200:"2hour", 14400:"4hour", 86400:"1day" },
+    _iv: { 300:"5min", 900:"15min", 3600:"1hour", 14400:"4hour", 86400:"1day" },
     async candles(symbol, tfSec, count){
-      const agg = tfSec === 10800;
-      const type = agg ? "1hour" : this._iv[tfSec];
+      const agg = false;
+      const type = this._iv[tfSec];
       if (!type) throw new Error("tf unsupported");
       const lim = Math.min(agg ? count*3 : count, 1500);
       const j = await ffetch(`https://api.kucoin.com/api/v1/market/candles?symbol=${symbol}&type=${type}&limit=${lim}`, 8000);
@@ -178,10 +178,10 @@ const FEED_PROVIDERS = {
   /* ---- Bybit (XAUT/PAXG + EUR USDT) ---- */
   bybit: {
     id: "bybit", name: "Bybit",
-    _iv: { 300:"5", 900:"15", 1800:"30", 3600:"60", 7200:"120", 14400:"240", 86400:"D" },
+    _iv: { 300:"5", 900:"15", 3600:"60", 14400:"240", 86400:"D" },
     async candles(symbol, tfSec, count){
-      const agg = tfSec === 10800;
-      const iv = agg ? "60" : this._iv[tfSec];
+      const agg = false;
+      const iv = this._iv[tfSec];
       if (!iv) throw new Error("tf unsupported");
       const lim = Math.min(agg ? count*3 : count, 1000);
       const j = await ffetch(`https://api.bybit.com/v5/market/kline?category=spot&symbol=${symbol}&interval=${iv}&limit=${lim}`, 8000);
@@ -203,10 +203,10 @@ const FEED_PROVIDERS = {
   /* ---- Bitfinex (last resort) ---- */
   bitfinex: {
     id: "bitfinex", name: "Bitfinex",
-    _iv: { 300:"5m", 900:"15m", 1800:"30m", 3600:"1h", 7200:"2h", 14400:"4h", 86400:"1D" },
+    _iv: { 300:"5m", 900:"15m", 3600:"1h", 14400:"4h", 86400:"1D" },
     async candles(symbol, tfSec, count){
-      const agg = tfSec === 10800;
-      const tf = agg ? "1h" : this._iv[tfSec];
+      const agg = false;
+      const tf = this._iv[tfSec];
       if (!tf) throw new Error("tf unsupported");
       const lim = Math.min(agg ? count*3 : count, 1000);
       const j = await ffetch(`https://api-pub.bitfinex.com/v2/candles/t${symbol}:${tf}/hist?limit=${lim}`, 8000);
@@ -233,7 +233,7 @@ const FEED_CHAINS = {
     ["kucoin",  ["XAUT-USDT"]],
     ["binance", ["XAUTUSDT", "PAXGUSDT"]],
     ["bybit",   ["XAUTUSDT", "PAXGUSDT"]],
-    ["bitfinex",["tXAUT:USD"]]
+    ["bitfinex",["XAUT:USD"]]
   ]
 };
 

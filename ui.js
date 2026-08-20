@@ -219,7 +219,7 @@ function addFeed(type, msg){
 /* ---------- Simulated periodic alerts ---------- */
 const FEED_MSGS = {
   buy:  ["XAU/USD — BUY signal on 1H, confidence 84%", "XAU/USD — BUY on 4H, FVG support holding, confidence 79%"],
-  sell: ["XAU/USD — SELL signal on 30M, confidence 78%", "XAU/USD — SELL on 1H, liquidity sweep above equal highs"],
+  sell: ["XAU/USD — SELL signal on 15M, confidence 78%", "XAU/USD — SELL on 1H, liquidity sweep above equal highs"],
   wait: ["XAU/USD — WAIT: no confluence yet, watch London open", "XAU/USD — WAIT: price in OTE, await confirmation"],
   news: ["CPI release in 3h — high volatility expected on gold", "NFP tomorrow 13:30 ET — avoid new trades before news"],
   kz:   ["London Kill Zone opens in 25 min — prepare", "NY AM Kill Zone active — watch for liquidity sweeps"]
